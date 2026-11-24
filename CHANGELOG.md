@@ -15,4 +15,5 @@ releases yet, so there are no version numbers.
 - Reproducible asset tooling in `scripts/brand/` (SVG → PNG/ICO/ICNS/BMP).
 - Animated, source-independent README artwork with light/dark variants and static fallbacks.
 - Redesigned README presenting the project honestly as early development.
+- Locally generated brand-style badges (no third-party badge service).
 - Lightweight validation workflow for docs and assets.

@@ -7,10 +7,10 @@
 
 <br>
 
-[![Status: early development](https://img.shields.io/badge/status-early%20development-1684D1?style=flat-square)](docs/DEVELOPMENT_STATE.md)
-[![Phase 0: foundation](https://img.shields.io/badge/phase-0%20%C2%B7%20foundation-174EA4?style=flat-square)](docs/ROADMAP.md)
-[![Licence: pending decision](https://img.shields.io/badge/licence-pending%20decision-6FBCEB?style=flat-square)](#licence)
-[![Desktop targets: Windows, macOS, Linux (planned)](https://img.shields.io/badge/targets-Windows%20%C2%B7%20macOS%20%C2%B7%20Linux%20(planned)-0F172A?style=flat-square)](#platform-targets)
+[![Status: early development](assets/readme/badge-status.svg)](docs/DEVELOPMENT_STATE.md)
+[![Phase 0: foundation](assets/readme/badge-phase.svg)](docs/ROADMAP.md)
+[![Licence: pending decision](assets/readme/badge-licence.svg)](#licence)
+[![Targets: Windows, macOS, Linux (planned)](assets/readme/badge-targets.svg)](#platform-targets)
 
 **A lightweight, privacy-first, open-source desktop web browser — in its earliest stage.**
 
