@@ -1,0 +1,24 @@
+# Dependencies / build output for asset tooling
+node_modules/
+scripts/**/node_modules/
+build/
+dist/
+*.log
+
+# Private branding workspace — logo-derived files whose provenance is not yet
+# cleared (see docs/BRAND_PROVENANCE.md). NEVER commit this directory while
+# the repository is public and provenance is unresolved.
+branding-private/
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+*.swp
+.vscode/
+.idea/
+
+# Secrets — never commit
+.env
+.env.*
+*.pem
+*.key
