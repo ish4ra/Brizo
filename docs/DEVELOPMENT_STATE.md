@@ -14,10 +14,11 @@ Scope: docs, branding tooling, README visuals, development continuity. **No brow
 ## Status
 - [x] Repository inspected (public repo, 1 commit on `main`, no PRs, no workflows)
 - [x] Checkpoint 1: `.gitignore`, `docs/DEVELOPMENT_STATE.md`
-- [ ] `CLAUDE.md` development rules
-- [ ] Logo master SVG candidate (kept PRIVATE — see provenance)
-- [ ] Asset generation tooling
-- [ ] README visual assets (source-independent)
+- [x] `CLAUDE.md` development rules
+- [x] Logo master SVG candidate (kept PRIVATE in git-ignored `branding-private/` — see provenance)
+- [x] Asset generation tooling (`scripts/brand/`)
+- [x] README visual assets (source-independent, `assets/readme/`)
+- [ ] Private owner review page for logo assets
 - [ ] README
 - [ ] Docs set
 - [ ] Validation + CI
