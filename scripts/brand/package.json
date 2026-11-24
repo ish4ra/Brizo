@@ -1,0 +1,19 @@
+{
+  "name": "brizo-brand-tools",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Reproducible generation and validation of Brizo branding and README assets.",
+  "type": "module",
+  "license": "UNLICENSED",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "build:readme": "node build-readme-assets.mjs",
+    "build:brand": "node build-brand-assets.mjs",
+    "validate": "node validate.mjs"
+  },
+  "devDependencies": {
+    "@fontsource/inter": "5.2.8",
+    "@resvg/resvg-js": "2.6.2",
+    "opentype.js": "1.3.4"
+  }
+}
