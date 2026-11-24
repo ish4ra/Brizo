@@ -1,0 +1,38 @@
+# Lightweight repository validation (docs + generated README assets).
+# Runs on free GitHub-hosted runners. No browser builds happen here.
+name: Validate
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: scripts/brand
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: scripts/brand/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - name: Regenerate README artwork and require it to match the committed SVGs
+        run: |
+          npm run build:readme
+          git diff --exit-code -- ../../assets/readme/*.svg
+      - name: Validate repository
+        run: npm run validate

@@ -83,8 +83,9 @@ Construction rules:
 | Text / secondary | `#475569` | `#A9B8CC` |
 | Accent / action fill | `#1684D1` | `#1684D1` |
 | Accent / link text | `#174EA4` | `#6FBCEB` |
+| Track / inactive line | `#C7D9EE` | `#24344F` |
 
-`#111A2E`, `#1E2B44`, `#475569`, `#A9B8CC` are **proposed** supporting neutrals
+`#111A2E`, `#1E2B44`, `#475569`, `#A9B8CC`, `#C7D9EE`, `#24344F` are **proposed** supporting neutrals
 (owner approval pending). They do not replace any brand colour.
 
 ### Measured contrast (WCAG 2.x)
