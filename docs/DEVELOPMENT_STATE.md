@@ -3,26 +3,22 @@
 > Single source of truth for resuming work. Update it at every checkpoint.
 > Do not rely on chat history: this file plus `git log` must be enough.
 
-_Last updated: 2026-11-25 · Task 002 complete, awaiting owner review_
+_Last updated: 2026-11-25 · Task 003 in progress_
 
 ## Active task
 
-**Task 002 (COMPLETE, awaiting owner review): Targeted README hero refinement, animated sailing logo (private), appearance control, and browser engine feasibility study.**
-Owner approved proceeding (2026-11-25). Not approved: merging PR #1, publishing logo assets, releases, engine selection, browser implementation.
+**Task 003: Foundation integration, README hero finalisation, first real Gecko build experiment.**
+Started 2026-11-25 from: PR #1 head `9f6c21f`, PR #2 head `e9e29db`, `main` `b68262a` (both PRs CI-green, no reviews).
+Owner approved: the V2 hero design, merging PR #1 then PR #2 after verification, and the Gecko build experiment
+(not yet Gecko as the permanent architecture). No paid infrastructure.
 
-Plan / progress (update as you go):
-- [x] A1 Animated exact-logo hero: PRIVATE (branding-private/), separate versioned package `brizo-hero-review-v2.zip`
-- [x] A2 Public README hero: keep current source-independent hero unless rights are cleared; refactor generator so the logo version is a flag flip
-- [x] A3 Compact appearance control (sun/moon + official GitHub appearance settings link, labelled honestly) + website theme-toggle design doc
-- [x] A4 Checkpoint on `claude/great-gates-umqsa8` (PR #1): `f9b68e7` + follow-up
-- [ ] B  Feasibility research on dependent branch `claude/task-002-engine-feasibility` (PR → `claude/great-gates-umqsa8`)
-  - [x] B1 Runner probe (run 45566601756, all 6 jobs green) → `research/probe/RESULTS-2026-11-25.md`
-  - [x] B2 Primary sources gathered (GitHub docs, Chromium docs, ungoogled-chromium/Helium, Zen, uBO/uBOL, adblock-rust, MDN, polyfill, Electron, Qt, CEF, yt-dlp, FFmpeg, aria2)
-  - [x] B3 Research documents in `docs/research/`
-  - [x] B4 Architecture decision proposal: **CONDITIONAL GO** (Gecko); next = Task 003 build experiment C1–C4
-  - [x] B5 Draft PR [ish4ra/Brizo#2](https://github.com/ish4ra/Brizo/pull/2) → base `claude/great-gates-umqsa8`
-
-Task 001 (foundation) is complete; see git history up to `a283b9e`.
+Phases (update as you go):
+- [ ] T1 Gecko Linux x64 experiment: branch `claude/task-003-gecko-build`, workflow `gecko-build-linux.yml`, Firefox **161.0** (`FIREFOX_161_0_RELEASE`)
+- [ ] T2 Logo provenance check (bounded); decide the public hero (V2 exact logo, or a distinct temporary motif)
+- [ ] T3 README hero update on PR #1 branch + live GitHub render check
+- [ ] T4 Merge PR #1 → main (merge commit); retarget PR #2 → main; merge PR #2
+- [ ] T5 Platform builds: macOS arm64, then Windows x64 (incremental, after Linux evidence)
+- [ ] T6 Security-update sustainability assessment + architecture verdict
 
 ## Branch & checkpoints
 
