@@ -190,14 +190,16 @@ if IS_LINUX:
             if not pid.isdigit():
                 continue
             try:
-                args = open(f"/proc/{pid}/cmdline", "rb").read().split(b"\0")
-                if not any(a == b"-contentproc" for a in args):
+                # Children forked by Firefox's fork server rewrite argv as one
+                # space-separated string, so tokenise on NUL *and* whitespace.
+                raw = open(f"/proc/{pid}/cmdline", "rb").read().replace(b"\0", b" ").decode(errors="replace")
+                argv = raw.split()
+                if "-contentproc" not in argv:
                     continue
                 st = open(f"/proc/{pid}/status").read()
                 seccomp = [l.split()[1] for l in st.splitlines() if l.startswith("Seccomp:")][0]
-                argv = [a.decode(errors="replace") for a in args if a]
                 ptype = "forkserver" if "-forkserver" in argv else argv[-1]
-                procs.append({"pid": int(pid), "type": ptype, "seccomp_mode": seccomp,
+                procs.append({"pid": int(pid), "type": ptype, "seccomp_mode": seccomp, "cmdline_tail": " ".join(argv[-3:]),
                               "own_user_ns": os.readlink(f"/proc/{pid}/ns/user") != parent_ns})
             except (FileNotFoundError, ProcessLookupError, PermissionError, IndexError):
                 continue
