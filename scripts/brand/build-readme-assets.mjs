@@ -214,9 +214,35 @@ ${title}
 ${tag}
 ${status}`, {
     title: 'Brizo — Fast. Private. Lightweight. Open.',
-    desc: 'Brizo browser banner: the Brizo sailboat sails across gently moving ocean waves beside the wordmark and tagline. Status: early development, architecture and foundation.',
+    desc: 'Brizo browser banner: a sailboat sails across gently moving ocean waves beside the wordmark and tagline. Status: early development, architecture and foundation.',
   });
 }
+
+// --------------------------------------------------------------------------
+// Temporary README sailboat motif (PUBLIC, source-independent)
+// --------------------------------------------------------------------------
+// An independently constructed, generic sloop used ONLY as README artwork while
+// the provisional logo's usage rights are unresolved (docs/BRAND_PROVENANCE.md).
+// It is NOT the Brizo logo and must not be used as an app icon. Deliberately
+// different construction from the provisional mark: visible mast, two separated
+// straight-edged triangular sails, symmetric crescent hull.
+export const MOTIF_BOAT = (() => {
+  const W = 200, H = 220; // design box
+  const parts = [
+    // mainsail (aft of mast), straight edges
+    `<path fill="${PALETTE.lightSail}" d="M88 24 L88 150 L22 150 Z"/>`,
+    // jib (forward of mast), straight edges
+    `<path fill="${PALETTE.primary}" d="M104 52 L104 150 L166 150 Z"/>`,
+    // mast
+    `<path d="M96 14 V160" stroke="${PALETTE.deepOcean}" stroke-width="6" stroke-linecap="round"/>`,
+    // symmetric crescent hull
+    `<path fill="${PALETTE.deepOcean}" d="M6 166 H194 C 178 200, 150 214, 100 214 C 50 214, 22 200, 6 166 Z"/>`,
+  ].join('');
+  return {
+    width: (h) => (h / H) * W,
+    render: ({ x, y, h }) => `<g transform="translate(${fmt(x)} ${fmt(y)}) scale(${fmt(h / H)})">${parts}</g>`,
+  };
+})();
 
 // --------------------------------------------------------------------------
 // Divider
@@ -383,7 +409,9 @@ ${ICONS[name](PALETTE.primary)}
 
 // --------------------------------------------------------------------------
 export function main() {
-const builders = { hero, divider, pillars, roadmap };
+// The public hero uses the temporary motif (D-013). hero() without a boat is
+// the Task 001 wave-only hero, kept in history.
+const builders = { hero: (t) => hero(t, { boat: MOTIF_BOAT }), divider, pillars, roadmap };
 let n = 0;
 for (const [name, fn] of Object.entries(builders)) {
   for (const theme of ['light', 'dark']) {

@@ -76,3 +76,16 @@ READMEs cannot run JavaScript or change the viewer's GitHub theme. The hero has
 a compact sun/moon note with an accurately labelled link to
 `https://github.com/settings/appearance`. A real Sun/Moon toggle is specified
 for the future website (`docs/website/`), but is not deployed.
+
+## D-013 · 2026-11-25 · Accepted: Public hero uses a temporary, distinct sailboat motif
+The owner approved hero V2's composition and animation. A bounded provenance check
+(BRAND_PROVENANCE) did not establish usage rights for the provisional logo. The
+public README hero therefore keeps V2's layout, motion, waves, wake, wordmark
+position and colours, but draws an independently constructed generic sloop
+(`MOTIF_BOAT`). It is README artwork only, not an application logo. The
+exact-logo V2 stays private (`branding-private/hero-v2/`). Switching later means
+passing the private boat renderer to `hero()`, after rights are confirmed.
+
+## D-014 · 2026-11-25 · Risk recorded: "BRIZO" Class 9 registration reported
+Aggregators report Delta Faucet Company's BRIZO registration covering Class 9.
+To be verified in USPTO TSDR; the project name needs owner and legal review before public launch.
