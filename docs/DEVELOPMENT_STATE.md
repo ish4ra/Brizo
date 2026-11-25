@@ -14,7 +14,8 @@ Owner approved: the V2 hero design, merging PR #1 then PR #2 after verification,
 
 Phases (update as you go):
 - [ ] T1 Gecko Linux x64 experiment: branch `claude/task-003-gecko-build`, workflow `gecko-build-linux.yml`, Firefox **161.0** (`FIREFOX_161_0_RELEASE`)
-- [ ] T2 Logo provenance check (bounded); decide the public hero (V2 exact logo, or a distinct temporary motif)
+  - Run 1: https://github.com/ish4ra/Brizo/actions/runs/45580332174 (commit `e504837`, started 2026-11-25 08:53 UTC). **If this session ends: check this run's result before re-running anything.**
+- [x] T2 Logo provenance check: rights NOT established (no metadata or authorship record; only a Google/Skia ICC profile). Name: a reported live BRIZO Class 9 registration by Delta Faucet Co. (unverified at USPTO). Decision: the public hero uses a distinct temporary motif
 - [ ] T3 README hero update on PR #1 branch + live GitHub render check
 - [ ] T4 Merge PR #1 → main (merge commit); retarget PR #2 → main; merge PR #2
 - [ ] T5 Platform builds: macOS arm64, then Windows x64 (incremental, after Linux evidence)
