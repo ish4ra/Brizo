@@ -1,0 +1,130 @@
+# Task 003: preflight checks for the Gecko experiment (no browser compilation).
+#  1. Artifact upload/download round-trip with canonical RUNNER_TEMP paths
+#     (the Linux #2 failure was a '..' path), on all three OSes, plus a 2 GiB
+#     payload on macOS to time the staged-build compiler-cache handoff.
+#  2. Sandbox baseline: OFFICIAL Mozilla Firefox 161.0 for Linux, smoke test v2,
+#     without and with an Ubuntu-style AppArmor userns profile.
+#  3. Actions cache inventory (read-only token).
+# Free standard runners only. Starts only when engine/gecko/triggers/preflight.txt changes.
+name: Gecko preflight (no compile)
+
+on:
+  push:
+    branches: ["claude/task-003-gecko-build"]
+    paths: ["engine/gecko/triggers/preflight.txt"]
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  FIREFOX_VERSION: "161.0"
+
+jobs:
+  upload-roundtrip:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Create dummy metrics, package and (macOS) 2 GiB cache payload
+        run: |
+          mkdir -p "$RUNNER_TEMP/metrics" "$RUNNER_TEMP/out"
+          echo "dummy metrics $(date -u)" > "$RUNNER_TEMP/metrics/results.json"
+          head -c 5000000 /dev/urandom > "$RUNNER_TEMP/out/dummy-package.bin"
+          (cd "$RUNNER_TEMP/out" && (sha256sum dummy-package.bin 2>/dev/null || shasum -a 256 dummy-package.bin) > SHA256SUMS.txt && cat SHA256SUMS.txt)
+          if [ "$RUNNER_OS" = "macOS" ]; then
+            mkdir -p "$RUNNER_TEMP/cache"; for i in 1 2 3 4; do head -c 536870912 /dev/urandom > "$RUNNER_TEMP/cache/part$i"; done
+            (cd "$RUNNER_TEMP/cache" && shasum -a 256 part* > "$RUNNER_TEMP/cache-sums.txt")
+            echo "UPLOAD_START=$(date +%s)" >> "$GITHUB_ENV"
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: preflight-metrics-${{ matrix.os }}
+          path: ${{ runner.temp }}/metrics
+          retention-days: 3
+      - uses: actions/upload-artifact@v4
+        with:
+          name: preflight-package-${{ matrix.os }}
+          path: ${{ runner.temp }}/out
+          retention-days: 3
+          compression-level: 0
+      - if: runner.os == 'macOS'
+        uses: actions/upload-artifact@v4
+        with:
+          name: preflight-cache-2gib
+          path: ${{ runner.temp }}/cache
+          retention-days: 1
+          compression-level: 0
+      - if: runner.os == 'macOS'
+        run: echo "2 GiB upload took $(( $(date +%s) - UPLOAD_START )) s"; cp "$RUNNER_TEMP/cache-sums.txt" "$RUNNER_TEMP/out/" || true
+      - if: runner.os == 'macOS'
+        uses: actions/upload-artifact@v4
+        with:
+          name: preflight-cache-sums
+          path: ${{ runner.temp }}/cache-sums.txt
+          retention-days: 1
+
+  download-verify:
+    needs: upload-roundtrip
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: ${{ runner.temp }}/dl
+      - name: Verify checksums and time the 2 GiB handoff
+        run: |
+          cd "$RUNNER_TEMP/dl"; ls
+          for os in ubuntu-latest windows-latest macos-latest; do
+            (cd "preflight-package-$os" && shasum -a 256 -c SHA256SUMS.txt) && test -s "preflight-metrics-$os/results.json" && echo "$os: OK"
+          done
+          (cd preflight-cache-2gib && shasum -a 256 -c ../preflight-cache-sums/cache-sums.txt) && echo "2 GiB payload intact"
+          du -sh preflight-cache-2gib
+
+  sandbox-official:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Fetch and verify official Firefox
+        run: |
+          engine/gecko/fetch-official-binary.sh "$FIREFOX_VERSION" "$RUNNER_TEMP/official"
+          pip install --quiet "websockets==15.0.1"
+          engine/gecko/host-sandbox-facts.sh | tee "$RUNNER_TEMP/host-facts.txt"
+      - name: Smoke v2 on official Firefox, WITHOUT AppArmor profile
+        continue-on-error: true
+        run: python engine/gecko/smoke_test.py "$RUNNER_TEMP/official/firefox/firefox" "$RUNNER_TEMP/sandbox/without-profile"
+      - name: Smoke v2 on official Firefox, WITH Ubuntu-style AppArmor userns profile
+        continue-on-error: true
+        run: |
+          engine/gecko/install-apparmor-profile.sh "$RUNNER_TEMP/official/firefox"
+          python engine/gecko/smoke_test.py "$RUNNER_TEMP/official/firefox/firefox" "$RUNNER_TEMP/sandbox/with-profile"
+      - name: Collect
+        if: always()
+        run: cp "$RUNNER_TEMP/host-facts.txt" "$RUNNER_TEMP/sandbox/" || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: preflight-sandbox-official
+          path: ${{ runner.temp }}/sandbox
+          retention-days: 30
+
+  cache-inventory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Actions cache usage and largest entries
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/${{ github.repository }}/actions/cache/usage"
+          gh api "repos/${{ github.repository }}/actions/caches?per_page=100" --jq '.total_count as $n | "entries: \($n)", (.actions_caches | map(.size_in_bytes) | add / 1073741824 | "size in first page (GiB): \(.)"), (.actions_caches | group_by(.ref) | map("\(.[0].ref): \(length) entries") | .[])'

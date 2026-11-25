@@ -1,15 +1,30 @@
 #!/usr/bin/env python3
-"""Automated smoke test for an experimental Brizo/Gecko Linux build.
-
-Drives the *packaged* browser over Firefox's built-in WebDriver BiDi endpoint
-(no extra driver binary). Every check is recorded as pass / fail / not-verified,
-never assumed.
+"""Smoke and security test for an experimental Brizo/Gecko build (v2).
 
     smoke_test.py <path-to-firefox-binary> <out-dir>
+
+Runs the packaged browser headless with two of Firefox's own automation
+interfaces:
+  * WebDriver BiDi (--remote-debugging-port): web-content checks (HTTPS,
+    certificate rejection, tabs). BiDi refuses privileged about: pages by design.
+  * Marionette (--marionette), Mozilla's automation protocol, in its privileged
+    "chrome" context: runtime checks of about:preferences and about:addons, and
+    Firefox's own sandbox report (Troubleshoot.snapshot().sandbox, the data
+    shown in about:support).
+
+Process-level evidence (Linux) is classified by Firefox process type; only
+web-content ("tab") processes are held to the content-sandbox gate. The
+fork server and utility processes have different sandbox policies and are
+reported, not counted.
+
+Statuses: pass | fail | not-verified | blocked-by-environment. Nothing is
+assumed; every result carries its evidence. Exit 1 if any check failed.
 """
 import base64
 import json
 import os
+import platform
+import socket
 import subprocess
 import sys
 import tempfile
@@ -20,13 +35,14 @@ from websockets.sync.client import connect
 
 BIN, OUT = sys.argv[1], sys.argv[2]
 os.makedirs(OUT, exist_ok=True)
-PORT = 9222
+BIDI_PORT, MARIONETTE_PORT = 9222, 2828
+IS_LINUX = sys.platform.startswith("linux")
 results = []
 
 
-def record(name, status, detail=""):
-    results.append({"check": name, "status": status, "detail": str(detail)[:500]})
-    print(f"[{status.upper():12}] {name}: {detail}", flush=True)
+def record(name, status, detail="", evidence=None):
+    results.append({"check": name, "status": status, "detail": str(detail)[:600], "evidence": evidence})
+    print(f"[{status.upper():22}] {name}: {str(detail)[:300]}", flush=True)
 
 
 class Bidi:
@@ -51,65 +67,98 @@ class Bidi:
         return r.get("result", {}).get("value")
 
 
+class Marionette:
+    """Minimal client for Mozilla's Marionette protocol (length-prefixed JSON)."""
+
+    def __init__(self, port):
+        self.s = socket.create_connection(("127.0.0.1", port), timeout=60)
+        self.n = 0
+        self._read()  # server hello
+
+    def _read(self):
+        head = b""
+        while not head.endswith(b":"):
+            c = self.s.recv(1)
+            if not c:
+                raise ConnectionError("marionette closed")
+            head += c
+        n = int(head[:-1])
+        data = b""
+        while len(data) < n:
+            data += self.s.recv(n - len(data))
+        return json.loads(data)
+
+    def cmd(self, name, params=None):
+        self.n += 1
+        msg = json.dumps([0, self.n, name, params or {}]).encode()
+        self.s.sendall(str(len(msg)).encode() + b":" + msg)
+        while True:
+            r = self._read()
+            if isinstance(r, list) and r[0] == 1 and r[1] == self.n:
+                if r[2]:
+                    raise RuntimeError(r[2])
+                return r[3]
+
+    def chrome_js(self, script):
+        return self.cmd("WebDriver:ExecuteScript", {"script": script, "args": []}).get("value")
+
+
 profile = tempfile.mkdtemp(prefix="brizo-smoke-")
 log = open(os.path.join(OUT, "browser-stderr.log"), "w")
 proc = subprocess.Popen(
-    [BIN, "--headless", "--no-remote", "--profile", profile, f"--remote-debugging-port={PORT}", "about:blank"],
+    [BIN, "--headless", "--no-remote", "--profile", profile, "--marionette",
+     f"--remote-debugging-port={BIDI_PORT}", "about:blank"],
     stdout=log, stderr=subprocess.STDOUT,
 )
 
 ws = None
-for _ in range(90):
+for _ in range(120):
     try:
-        ws = connect(f"ws://127.0.0.1:{PORT}/session", open_timeout=2, max_size=64 * 2**20)
+        ws = connect(f"ws://127.0.0.1:{BIDI_PORT}/session", open_timeout=2, max_size=64 * 2**20)
         break
     except Exception:
         time.sleep(1)
 if ws is None:
-    record("launch", "fail", "BiDi endpoint did not come up within 90 s (see browser-stderr.log)")
+    record("launch", "fail", "BiDi endpoint did not come up within 120 s (see browser-stderr.log)")
     proc.kill()
     json.dump(results, open(os.path.join(OUT, "smoke.json"), "w"), indent=2)
     sys.exit(1)
 
+# ---------------------------------------------------------------- BiDi checks
 b = Bidi(ws)
 try:
     caps = b.call("session.new", {"capabilities": {"alwaysMatch": {"acceptInsecureCerts": False}}})["capabilities"]
-    record("launch", "pass", f"{caps.get('browserName')} {caps.get('browserVersion')} pid={proc.pid}")
+    record("launch", "pass", f"{caps.get('browserName')} {caps.get('browserVersion')} pid={proc.pid} arch={platform.machine()}")
 except Exception as e:  # noqa: BLE001
     record("launch", "fail", e)
+
 
 def top_contexts():
     return b.call("browsingContext.getTree", {})["contexts"]
 
-ctx = top_contexts()[0]["context"]
 
-# HTTPS navigation
+ctx = top_contexts()[0]["context"]
 try:
     b.call("browsingContext.navigate", {"context": ctx, "url": "https://example.com/", "wait": "complete"})
-    title = b.eval(ctx, "document.title")
-    proto = b.eval(ctx, "location.protocol")
-    ok = proto == "https:" and "Example" in (title or "")
-    record("https_navigation", "pass" if ok else "fail", f"title={title!r} protocol={proto}")
+    title, proto = b.eval(ctx, "document.title"), b.eval(ctx, "location.protocol")
+    record("https_navigation", "pass" if proto == "https:" and "Example" in (title or "") else "fail", f"title={title!r} protocol={proto}")
     shot = b.call("browsingContext.captureScreenshot", {"context": ctx})["data"]
     open(os.path.join(OUT, "example-com.png"), "wb").write(base64.b64decode(shot))
 except Exception as e:  # noqa: BLE001
     record("https_navigation", "fail", e)
 
-# Certificate validation must reject an expired certificate
 try:
+    nav_err = None
     try:
         b.call("browsingContext.navigate", {"context": ctx, "url": "https://expired.badssl.com/", "wait": "complete"})
-        nav_err = None
     except Exception as e:  # noqa: BLE001
         nav_err = e
     uri = b.eval(ctx, "document.documentURI") or ""
-    rejected = uri.startswith("about:certerror") or uri.startswith("about:neterror") or nav_err is not None
-    record("certificate_validation", "pass" if rejected else "fail",
-           f"documentURI={uri[:80]!r} navigate_error={str(nav_err)[:120] if nav_err else None}")
+    ok = uri.startswith("about:certerror")
+    record("certificate_validation", "pass" if ok else "fail", f"documentURI={uri[:90]!r} navigate_error={str(nav_err)[:140] if nav_err else None}")
 except Exception as e:  # noqa: BLE001
     record("certificate_validation", "not-verified", e)
 
-# Tabs: open and close
 try:
     before = len(top_contexts())
     new = b.call("browsingContext.create", {"type": "tab"})["context"]
@@ -117,80 +166,144 @@ try:
     during = len(top_contexts())
     b.call("browsingContext.close", {"context": new})
     after = len(top_contexts())
-    ok = during == before + 1 and after == before
-    record("tabs_open_close", "pass" if ok else "fail", f"contexts before={before} during={during} after={after}")
+    record("tabs_open_close", "pass" if during == before + 1 and after == before else "fail", f"contexts before={before} during={during} after={after}")
 except Exception as e:  # noqa: BLE001
     record("tabs_open_close", "fail", e)
 
-# Sandbox evidence: inspect content processes (children with -contentproc)
+# Keep a web-content process alive for the process-level evidence below.
 try:
     b.call("browsingContext.navigate", {"context": ctx, "url": "https://example.com/", "wait": "complete"})
-    time.sleep(2)
-    out = subprocess.run(["ps", "-eo", "pid,args"], capture_output=True, text=True).stdout
-    pids = [int(l.split()[0]) for l in out.splitlines()[1:] if "-contentproc" in l]
-    parent_ns = os.readlink(f"/proc/{proc.pid}/ns/user")
-    info = []
-    seccomp_ok = 0
-    for pid in pids:
-        try:
-            st = open(f"/proc/{pid}/status").read()
-            sec = [l.split()[1] for l in st.splitlines() if l.startswith("Seccomp:")][0]
-            ns = os.readlink(f"/proc/{pid}/ns/user")
-            info.append({"pid": pid, "seccomp": sec, "own_user_ns": ns != parent_ns})
-            seccomp_ok += sec == "2"
-        except Exception as e:  # noqa: BLE001
-            info.append({"pid": pid, "error": str(e)})
-    json.dump(info, open(os.path.join(OUT, "sandbox-processes.json"), "w"), indent=2)
-    status = "pass" if pids and seccomp_ok == len(pids) else ("fail" if pids else "not-verified")
-    record("content_sandbox_seccomp", status,
-           f"{seccomp_ok}/{len(pids)} content processes in seccomp filter mode; user-namespace isolated: "
-           f"{sum(1 for i in info if i.get('own_user_ns'))}/{len(pids)}")
-except Exception as e:  # noqa: BLE001
-    record("content_sandbox_seccomp", "not-verified", e)
-
-# Settings and extension manager pages (privileged; BiDi may not script them)
-for name, url, probe in [
-    ("settings_page", "about:preferences", "!!document.getElementById('mainPrefPane') || document.title"),
-    ("extension_manager_page", "about:addons", "!!document.querySelector('addon-list, #categories, categories-box') || document.title"),
-]:
-    try:
-        b.call("browsingContext.navigate", {"context": ctx, "url": url, "wait": "complete"})
-        try:
-            v = b.eval(ctx, probe)
-            record(name, "pass" if v else "fail", f"probe={v!r}")
-        except Exception as e:  # noqa: BLE001
-            record(name, "not-verified", f"navigated, but privileged page not scriptable via BiDi: {e}")
-    except Exception as e:  # noqa: BLE001
-        record(name, "not-verified", f"navigation refused by BiDi: {e}")
-
+except Exception:  # noqa: BLE001
+    pass
 try:
     b.call("session.end", {})
 except Exception:  # noqa: BLE001
     pass
 ws.close()
+time.sleep(2)
+
+# ------------------------------------------------ Process-level evidence (Linux)
+procs = []
+if IS_LINUX:
+    try:
+        parent_ns = os.readlink(f"/proc/{proc.pid}/ns/user")
+        for pid in os.listdir("/proc"):
+            if not pid.isdigit():
+                continue
+            try:
+                args = open(f"/proc/{pid}/cmdline", "rb").read().split(b"\0")
+                if not any(a == b"-contentproc" for a in args):
+                    continue
+                st = open(f"/proc/{pid}/status").read()
+                seccomp = [l.split()[1] for l in st.splitlines() if l.startswith("Seccomp:")][0]
+                argv = [a.decode(errors="replace") for a in args if a]
+                ptype = "forkserver" if "-forkserver" in argv else argv[-1]
+                procs.append({"pid": int(pid), "type": ptype, "seccomp_mode": seccomp,
+                              "own_user_ns": os.readlink(f"/proc/{pid}/ns/user") != parent_ns})
+            except (FileNotFoundError, ProcessLookupError, PermissionError, IndexError):
+                continue
+    except Exception as e:  # noqa: BLE001
+        record("process_inventory", "not-verified", e)
+    json.dump(procs, open(os.path.join(OUT, "sandbox-processes.json"), "w"), indent=2)
+
+# ------------------------------------------- Marionette (privileged) checks
+sandbox = None
+try:
+    m = Marionette(MARIONETTE_PORT)
+    m.cmd("WebDriver:NewSession", {"capabilities": {}})
+    m.cmd("Marionette:SetContext", {"value": "chrome"})
+    sandbox = m.chrome_js("""
+      return (async () => {
+        const {Troubleshoot} = ChromeUtils.importESModule("resource://gre/modules/Troubleshoot.sys.mjs");
+        const snap = await Troubleshoot.snapshot();
+        return snap.sandbox || null;
+      })();""")
+    json.dump(sandbox, open(os.path.join(OUT, "firefox-sandbox-report.json"), "w"), indent=2)
+    record("firefox_sandbox_report", "pass" if sandbox else "not-verified",
+           {k: sandbox.get(k) for k in ("contentSandboxLevel", "effectiveContentSandboxLevel", "hasSeccompBPF",
+                                        "hasSeccompTSync", "hasUserNamespaces", "hasPrivilegedUserNamespaces",
+                                        "canSandboxContent", "canSandboxMedia")} if sandbox else "no sandbox section")
+    for name, url, probe in [
+        ("settings_page_runtime", "about:preferences", "!!d.getElementById('mainPrefPane')"),
+        ("extension_manager_page_runtime", "about:addons", "!!d.querySelector('categories-box, #categories, addon-list, #main')"),
+    ]:
+        r = m.chrome_js(f"""
+          return (async () => {{
+            const tab = gBrowser.addTab("{url}", {{triggeringPrincipal: Services.scriptSecurityManager.getSystemPrincipal()}});
+            gBrowser.selectedTab = tab;
+            const br = tab.linkedBrowser;
+            for (let i = 0; i < 150; i++) {{
+              const d = br.contentDocument;
+              if (d && d.readyState == "complete" && {probe}) {{
+                const out = {{ok: true, uri: d.documentURI, title: d.title}};
+                gBrowser.removeTab(tab);
+                return out;
+              }}
+              await new Promise(r => setTimeout(r, 200));
+            }}
+            return {{ok: false, uri: br.currentURI.spec}};
+          }})();""")
+        record(name, "pass" if r and r.get("ok") else "fail", r)
+    try:
+        m.cmd("Marionette:Quit", {"flags": ["eForceQuit"]})
+    except Exception:  # noqa: BLE001
+        pass
+except Exception as e:  # noqa: BLE001
+    record("marionette_session", "not-verified", e)
+
+# ----------------------------------------------------------- Security gate
+if sandbox:
+    lvl, eff = sandbox.get("contentSandboxLevel"), sandbox.get("effectiveContentSandboxLevel")
+    ok = isinstance(eff, int) and eff > 0 and eff == lvl
+    record("content_sandbox_level", "pass" if ok else "fail", f"configured={lvl} effective={eff}")
+else:
+    record("content_sandbox_level", "not-verified", "Firefox sandbox report unavailable")
+
+if IS_LINUX:
+    tabs = [p for p in procs if p["type"] == "tab"]
+    others = [p for p in procs if p["type"] != "tab"]
+    if not tabs:
+        record("linux_content_seccomp", "not-verified", f"no web-content processes found; other child processes: {others}")
+    else:
+        bad = [p for p in tabs if p["seccomp_mode"] != "2"]
+        record("linux_content_seccomp", "fail" if bad else "pass",
+               f"{len(tabs) - len(bad)}/{len(tabs)} web-content processes in seccomp filter mode; non-content children: "
+               + ", ".join(f"{p['type']}:seccomp={p['seccomp_mode']}" for p in others), evidence=procs)
+        has_userns = bool(sandbox and sandbox.get("hasUserNamespaces"))
+        isolated = [p for p in tabs if p["own_user_ns"]]
+        if has_userns:
+            record("linux_content_user_namespaces", "pass" if len(isolated) == len(tabs) else "fail",
+                   f"{len(isolated)}/{len(tabs)} web-content processes in their own user namespace (Firefox reports hasUserNamespaces=true)")
+        else:
+            record("linux_content_user_namespaces", "blocked-by-environment",
+                   f"Firefox reports hasUserNamespaces={sandbox.get('hasUserNamespaces') if sandbox else None}: "
+                   "unprivileged user namespaces unavailable to this binary on this host "
+                   "(see apparmor/sysctl evidence in the job log); namespace layer not active")
+
 proc.terminate()
 try:
     proc.wait(timeout=20)
 except subprocess.TimeoutExpired:
     proc.kill()
 
-# Static packaging check: settings + add-ons manager UI are present in omni.ja
+# --------------------------------------------- Static packaging checks
 try:
     appdir = os.path.dirname(os.path.realpath(BIN))
     names = set()
-    cands = [appdir, os.path.join(appdir, "..", "Resources")]  # Linux layout, macOS .app layout
-    for omni in [os.path.join(d, *p) for d in cands for p in (["omni.ja"], ["browser", "omni.ja"])]:
-        if os.path.exists(omni):
-            with zipfile.ZipFile(omni) as z:
-                names.update(z.namelist())
-    has_prefs = any(n.endswith("preferences/preferences.xhtml") for n in names)
-    has_addons = any(n.endswith("aboutaddons.html") for n in names)
-    record("package_contains_settings_ui", "pass" if has_prefs else "fail", "preferences.xhtml in omni.ja")
-    record("package_contains_addons_manager", "pass" if has_addons else "fail", "aboutaddons.html in omni.ja")
+    for d in [appdir, os.path.join(appdir, "..", "Resources")]:
+        for rel in (["omni.ja"], ["browser", "omni.ja"]):
+            omni = os.path.join(d, *rel)
+            if os.path.exists(omni):
+                with zipfile.ZipFile(omni) as z:
+                    names.update(z.namelist())
+    record("package_contains_settings_ui", "pass" if any(n.endswith("preferences/preferences.xhtml") for n in names) else "fail")
+    record("package_contains_addons_manager", "pass" if any(n.endswith("aboutaddons.html") for n in names) else "fail")
 except Exception as e:  # noqa: BLE001
     record("package_static_checks", "not-verified", e)
 
 json.dump(results, open(os.path.join(OUT, "smoke.json"), "w"), indent=2)
 fails = [r for r in results if r["status"] == "fail"]
-print(f"\n{len(results)} checks: {len(results) - len(fails)} not failed, {len(fails)} failed")
+print(f"\n{len(results)} checks: {len(fails)} failed, "
+      f"{sum(r['status'] == 'blocked-by-environment' for r in results)} blocked by environment, "
+      f"{sum(r['status'] == 'not-verified' for r in results)} not verified")
 sys.exit(1 if fails else 0)
