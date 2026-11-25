@@ -3,11 +3,11 @@
 > Single source of truth for resuming work. Update it at every checkpoint.
 > Do not rely on chat history: this file plus `git log` must be enough.
 
-_Last updated: 2026-11-25 · Task 002 in progress_
+_Last updated: 2026-11-25 · Task 002 complete, awaiting owner review_
 
 ## Active task
 
-**Task 002: Targeted README hero refinement, animated sailing logo (private), appearance control, and browser engine feasibility study.**
+**Task 002 (COMPLETE, awaiting owner review): Targeted README hero refinement, animated sailing logo (private), appearance control, and browser engine feasibility study.**
 Owner approved proceeding (2026-11-25). Not approved: merging PR #1, publishing logo assets, releases, engine selection, browser implementation.
 
 Plan / progress (update as you go):
@@ -20,7 +20,7 @@ Plan / progress (update as you go):
   - [x] B2 Primary sources gathered (GitHub docs, Chromium docs, ungoogled-chromium/Helium, Zen, uBO/uBOL, adblock-rust, MDN, polyfill, Electron, Qt, CEF, yt-dlp, FFmpeg, aria2)
   - [x] B3 Research documents in `docs/research/`
   - [x] B4 Architecture decision proposal: **CONDITIONAL GO** (Gecko); next = Task 003 build experiment C1–C4
-  - [ ] B5 Draft PR for the research branch
+  - [x] B5 Draft PR [ish4ra/Brizo#2](https://github.com/ish4ra/Brizo/pull/2) → base `claude/great-gates-umqsa8`
 
 Task 001 (foundation) is complete; see git history up to `a283b9e`.
 
@@ -98,3 +98,20 @@ To regenerate in a new session: place `brizo-mark.svg` and `brizo-mark-small.svg
 3. `cd scripts/brand && npm ci && npm run build:readme && npm run validate`. This must pass with no git diff.
 4. Only after owner approval: begin Task 002 per `docs/TECHNICAL_RESEARCH_PLAN.md`, on a new branch,
    updating this file before and after each subtask.
+
+## Task 002 handover (2026-11-25)
+
+| Branch | PR | Contents |
+| --- | --- | --- |
+| `claude/great-gates-umqsa8` | [ish4ra/Brizo#1](https://github.com/ish4ra/Brizo/pull/1) (draft) | Task 001 + 002A (private hero tooling, appearance note, reduced-motion fix, toggle reference). Head `9f6c21f` |
+| `claude/task-002-engine-feasibility` | [ish4ra/Brizo#2](https://github.com/ish4ra/Brizo/pull/2) (draft, base = PR #1 branch) | Feasibility research, runner probe, ADR (CONDITIONAL GO, Gecko) |
+
+Merge order if approved: PR #1 into `main`, then retarget PR #2 to `main`.
+
+**Next task (needs owner approval): Task 003, the Gecko build experiment C1–C4**
+(`docs/research/ARCHITECTURE_DECISION_PROPOSAL.md` §3). Start a new branch from
+`claude/task-002-engine-feasibility` (or `main` after merges). Bounded CI only,
+no product code. Check Apple SDK terms before C3.
+
+Resume checklist: `git fetch origin`, then check out the research branch, then
+`cd scripts/brand && npm ci && npm run build:readme && npm run validate` (must pass with no diff).
