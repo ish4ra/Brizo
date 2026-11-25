@@ -4,12 +4,10 @@
   <source media="(prefers-reduced-motion: reduce) and (prefers-color-scheme: dark)" srcset="assets/readme/static/hero-dark.png">
   <source media="(prefers-reduced-motion: reduce)" srcset="assets/readme/static/hero-light.png">
   <source media="(prefers-color-scheme: dark)" srcset="assets/readme/hero-dark.svg">
-  <img alt="Brizo — Fast. Private. Lightweight. Open. An illustrative sailboat sails across animated waves. Early development: architecture and foundation." src="assets/readme/hero-light.svg" width="100%">
+  <img alt="Brizo — Fast. Private. Lightweight. Open. The Brizo sailboat sails across animated waves. Early development: architecture and foundation." src="assets/readme/hero-light.svg" width="100%">
 </picture>
 
-<sub><a href="https://github.com/settings/appearance" title="Opens GitHub's appearance settings (sign-in required). README content cannot change your theme."><img src="assets/readme/icon-sun.svg" width="12" height="12" alt="Light"><img src="assets/readme/icon-moon.svg" width="12" height="12" alt="Dark"></a> Artwork adapts to light and dark mode automatically · <a href="https://github.com/settings/appearance">GitHub appearance settings</a></sub>
-
-<br>
+<p align="right"><a href="https://raw.githubusercontent.com/ish4ra/Brizo/main/assets/readme/hero-light.svg" title="Light preview: open the light banner artwork"><img src="assets/readme/icon-sun.svg" width="14" height="14" alt="Light preview"></a>&nbsp;<a href="https://raw.githubusercontent.com/ish4ra/Brizo/main/assets/readme/hero-dark.svg" title="Dark preview: open the dark banner artwork"><img src="assets/readme/icon-moon.svg" width="14" height="14" alt="Dark preview"></a></p>
 
 [![Status: early development](assets/readme/badge-status.svg)](docs/DEVELOPMENT_STATE.md)
 [![Phase 0: foundation](assets/readme/badge-phase.svg)](docs/ROADMAP.md)
@@ -222,11 +220,10 @@ no licence is granted for the contents of this repository. See
 ## Brand notice
 
 “Brizo” is a working name and has **not** received trademark clearance. The
-logo shown to the owner for review is a provisional candidate whose provenance
-is unresolved, so it is intentionally **not** published here. The sailboat in
-the animated banner is a **temporary illustration, not the Brizo logo**; all
-README artwork is original and source-independent. Details:
-[docs/BRAND_PROVENANCE.md](docs/BRAND_PROVENANCE.md).
+sailboat in the animated banner is the owner-selected **provisional** Brizo mark,
+published by owner decision. Its provenance and usage rights are **unresolved**:
+it is not claimed to be independently originated, exclusively owned or legally
+cleared. Details: [docs/BRAND_PROVENANCE.md](docs/BRAND_PROVENANCE.md).
 
 <div align="center">
 <br>

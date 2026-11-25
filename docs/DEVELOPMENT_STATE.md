@@ -2,121 +2,97 @@
 
 > Single source of truth for resuming work. Update it at every checkpoint.
 > Do not rely on chat history: this file plus `git log` must be enough.
+> The **Active state** section is current. Everything under **History** is a
+> record of earlier checkpoints and must not be treated as current instructions.
 
-_Last updated: 2026-11-25 · Task 003 in progress_
+_Last updated: 2026-11-25 ~10:50 UTC · Task 003 in progress (builds running)_
 
-## Active task
+## Active state
 
-**Task 003: Foundation integration, README hero finalisation, first real Gecko build experiment.**
-Started 2026-11-25 from: PR #1 head `9f6c21f`, PR #2 head `e9e29db`, `main` `b68262a` (both PRs CI-green, no reviews).
-Owner approved: the V2 hero design, merging PR #1 then PR #2 after verification, and the Gecko build experiment
-(not yet Gecko as the permanent architecture). No paid infrastructure.
+### Task
+**Task 003: first real Gecko build experiment** (plus README hero work, now complete).
+Owner approved testing Gecko. That is **not** approval of Gecko as the permanent
+architecture, and **not** approval to merge PR #3. Free infrastructure only.
 
-Phases (update as you go):
-- [ ] T1 Gecko Linux x64 experiment: branch `claude/task-003-gecko-build`, workflow `gecko-build-linux.yml`, Firefox **161.0** (`FIREFOX_161_0_RELEASE`)
-  - Run 1: https://github.com/ish4ra/Brizo/actions/runs/45580332174 (`e504837`). **FAILED:** source fetch and verify 26 s, configure 107 s OK; the runner received a shutdown signal (exit 143) **18 min into compile** (09:17 UTC). The always() steps were skipped, so no metrics survived. Suspected memory exhaustion (4 parallel jobs, 15.6 GiB, no swap); unconfirmed because the metrics were lost with the VM.
-  - Run 2: https://github.com/ish4ra/Brizo/actions/runs/45584240076 (`fa61ecc`): same config plus a 16 GiB swapfile, with memory, disk and build progress streamed to the job log every 60 s (evidence survives a runner loss)
-- [x] T2 Logo provenance check: rights NOT established (no metadata or authorship record; only a Google/Skia ICC profile). Name: a reported live BRIZO Class 9 registration by Delta Faucet Co. (unverified at USPTO). Decision: the public hero uses a distinct temporary motif
-- [x] T3 Public hero = V2 layout and animation with a temporary distinct sloop motif (`e809bd7`); live GitHub render verified (4 theme × motion combos, 0 broken images)
-- [x] T3b **Owner correction:** the sloop was rejected. The approved V2 hero with the exact provisional mark is published (D-015, narrow validator whitelist); a compact sun/moon `<details>` light/dark preview replaces the settings line (D-016); attribution policy set (D-017, CLAUDE.md §5a). PR [ish4ra/Brizo#4](https://github.com/ish4ra/Brizo/pull/4) merged → `main` **`e6cb200`**; live render verified; no build triggers touched
-- [x] T4 PR #1 merged → `main` `eae736c`; PR #2 retargeted, `main` merged in (`66ffefd`), merged → `main` **`5d020fc`** (merge commits, history preserved, original branches kept)
-- [ ] T5 Platform builds (incremental)
-  - macOS arm64 run 1: https://github.com/ish4ra/Brizo/actions/runs/45581403273 (commit `49eaca1`, native `macos-latest`, Xcode 26.6 SDK; Firefox 161 needs SDK ≥ 26.5)
-  - Windows x64: workflow prepared after Linux evidence; native `windows-latest`, VC_PATH/WINDOWSSDKDIR from the installed VS (no `vs` bootstrap)
-- Draft PR for the experiment: [ish4ra/Brizo#3](https://github.com/ish4ra/Brizo/pull/3) (do not merge without owner approval)
-
-**How builds are started:** edit `engine/gecko/triggers/<linux|macos|windows>.txt` on `claude/task-003-gecko-build` and push. Nothing else starts a build.
-Never re-run a configuration that already succeeded; read the run's `*-metrics` artifact and step summary first.
-- [ ] T6 Security-update sustainability assessment + architecture verdict
-
-## Branch & checkpoints
-
-| | |
+### Repository
+| Item | State |
 | --- | --- |
-| Development branch | `claude/great-gates-umqsa8` (Claude Code session branch) |
-| Base | `main` @ `b68262a` (Initial commit, untouched) |
-| Pull request | Draft PR `claude/great-gates-umqsa8` → `main` (do not merge without owner approval) |
-| Last CI-verified commit | `49944b4`, workflow *Validate* run #2 passed on `ubuntu-latest` |
+| `main` | Foundation (PR #1), research (PR #2), V2 hero (PR #4) and preview-link correction (PR #5) all merged. Check `git log origin/main` for the head |
+| Experiment branch | `claude/task-003-gecko-build`, draft PR [ish4ra/Brizo#3](https://github.com/ish4ra/Brizo/pull/3) (**do not merge without separate owner approval**) |
+| Merged and finished branches (kept, do not delete) | `claude/great-gates-umqsa8` (PR #1), `claude/task-002-engine-feasibility` (PR #2), `claude/task-003-hero-correction` (PR #4), `claude/task-003-preview-links` (PR #5) |
 
-Checkpoint history (oldest first): `62bdb36` state tracker → `b4576a8` CLAUDE.md + tooling →
-`1784240` README artwork → `9de2317` README + docs → `d6ba44b` validator + CI →
-`49944b4` local badges → final state update (this file).
+### Build experiment status (Firefox 161.0, tag `FIREFOX_161_0_RELEASE`)
+| Platform | Run | Status at last check (10:46 UTC) | Notes |
+| --- | --- | --- | --- |
+| Linux x64 attempt 1 | [45580332174](https://github.com/ish4ra/Brizo/actions/runs/45580332174) | **Failed** | Source verified (26 s), configure OK (107 s). The runner got a shutdown signal (exit 143) 18 min into compile, and the `always()` steps were skipped, so **no metrics survived**. Memory exhaustion is **suspected, not proven** |
+| Linux x64 attempt 2 | [45584240076](https://github.com/ish4ra/Brizo/actions/runs/45584240076) | **Compiling** since 09:23 UTC | Adds a 16 GiB swapfile; memory, disk and build progress are streamed to the job log every 60 s |
+| macOS arm64 | [45581403273](https://github.com/ish4ra/Brizo/actions/runs/45581403273) | **Compiling** since 09:08 UTC | Native `macos-latest` (3 CPU / 7 GiB); configure succeeded with Xcode 26.6 SDK (Firefox 161 needs ≥ 26.5) |
+| Windows x64 | not started | Waiting for the Linux attempt 2 result | Workflow `gecko-build-windows.yml` ready (native `windows-latest`, MozillaBuild, runner's VS/SDK via `VC_PATH`/`WINDOWSSDKDIR`) |
 
-## Completed subtasks
+**Do not** start another Linux or macOS build while these runs are active. **Do not** rerun a
+configuration that already succeeded. Builds start **only** by editing
+`engine/gecko/triggers/<linux|macos|windows>.txt` on the experiment branch.
 
-- [x] Repository inspected: public repo, 1 commit on `main`, no PRs, no workflows, README only
-- [x] `.gitignore` (incl. private `branding-private/`), `CLAUDE.md` development rules
-- [x] Logo master v1 vector candidate (private) + small-size variant
-- [x] Asset tooling `scripts/brand/` (resvg, opentype.js, Inter OFL; in-house ICO/ICNS/BMP)
-- [x] 100 private logo-derived exports: lockups, mono, PNG 16–1024, ICO, ICNS + iconset, Linux hicolor, favicons, toolbar, GitHub social/avatar, NSIS + DMG art
-- [x] Source-independent animated README artwork (light/dark, reduced-motion, static PNGs, local badges)
-- [x] README, CONTRIBUTING, SECURITY, CHANGELOG, docs set (vision, requirements, roadmap, decisions, research plan, brand guidelines, provenance)
-- [x] `scripts/brand/validate.mjs` + `.github/workflows/validate.yml` (passing)
-- [x] README rendered on github.com in headless Chromium (light + dark): `<picture>` switching works, all repo SVGs load, hero animation confirmed running
-- [x] Private owner review page + zip package delivered in the Claude conversation
+### Continuation steps (exact)
+1. `git fetch origin && git checkout claude/task-003-gecko-build && git pull`.
+2. Check runs 45584240076 and 45581403273 once (GitHub UI, or
+   `curl -s https://api.github.com/repos/ish4ra/Brizo/actions/runs/<id>/jobs`).
+3. For each finished run: download the `gecko-*-metrics` artifact (timings, resource CSV, smoke
+   results, `results.json`) and, if present, the `brizo-gecko-experiment-*` package artifact. Record
+   compile time, peak RAM, swap and disk, package size, SHA-256 and smoke results in
+   `docs/research/GECKO_BUILD_EXPERIMENT.md` (create it), and in the table above.
+4. If Linux attempt 2 failed: read the streamed `[res …]` lines in its job log and diagnose
+   before any change. Do not retry the identical configuration.
+5. After Linux is evaluated, start Windows: append a line to `engine/gecko/triggers/windows.txt`, then push.
+6. Then: security-update sustainability assessment and the GO / CONDITIONAL GO / NO-GO verdict
+   (`docs/research/ARCHITECTURE_DECISION_PROPOSAL.md` conditions C1–C4).
+7. Commit as the owner identity per CLAUDE.md §5a. Do not merge PR #3.
 
-## Pending (owner)
+### Branding (current, supersedes older notes below)
+- Public README hero = owner-selected **provisional V2 sailing hero** (D-015). Only
+  `assets/readme/hero-{light,dark}.svg` and their static PNGs may contain the mark;
+  `validate.mjs` whitelists exactly those files. Everything else (master, exports, icons,
+  reference) stays private in git-ignored `branding-private/`.
+- Provenance and trademark are **unresolved** (BRAND_PROVENANCE, D-014). Nothing is cleared.
+- Appearance previews (D-018): two 14 px icon links under the hero (sun → light SVG,
+  moon → dark SVG on raw.githubusercontent.com). Exactly one hero banner is shown on the page.
+- Private review pages: v1 brand https://claude.ai/artifact/DV8wzGrqYP72w57aH4X7Yr ·
+  hero https://claude.ai/artifact/YKYxLma6FJ5WpT6x1ucn75. Packages `brizo-brand-review-v1.zip`,
+  `brizo-hero-review-v2.zip`, `brizo-hero-review-v3-public-motif.zip` were delivered in the Claude
+  conversations; the owner keeps copies. To rebuild, restore `source/brizo-mark.svg` into
+  `branding-private/source/`.
 
-See "Owner decisions needed" below. Nothing technical is pending for Task 001.
+### Open blockers
+1. Gecko build feasibility not yet proven (runs in progress).
+2. Logo provenance unknown; "BRIZO" Class 9 registration reported (unverified at USPTO).
+3. Licence not chosen (MPL-2.0 recommended, D-005).
+4. Sandbox limits: GitHub CSS/JS, the Mermaid viewer and docs.github.com are not reachable from Claude's sandbox.
 
-## Current technical decisions
+### Owner decisions pending
+Approve or reject merging PR #3 · trademark and provenance actions · licence · whether
+Gecko becomes the permanent foundation (after build evidence) · whether to rewrite
+history to remove the historical Claude contributor entry (not recommended, needs explicit approval).
 
-See [DECISIONS.md](DECISIONS.md). D-001 to D-003 and D-006 to D-008 accepted; D-004 (provenance),
-D-005 (licence) and D-009 (engine) pending.
+## History (archived checkpoints — not current instructions)
 
-## Unresolved blockers
+### Task 003 timeline
+- Started from PR #1 `9f6c21f`, PR #2 `e9e29db`, `main` `b68262a`.
+- PR #1 merged → `main` `eae736c`. PR #2 retargeted, `main` merged in (`66ffefd`), merged → `5d020fc`.
+- Bounded provenance check: no metadata or authorship record (ICC "Google Inc. 2016" only).
+  Reported BRIZO Class 9 registration by Delta Faucet Co. (aggregator sources).
+- Temporary sloop motif published (`e809bd7`, D-013), then **rejected by the owner**. Superseded by D-015.
+- V2 hero published with a `<details>` light/dark preview (PR #4 → `e6cb200`, D-015/D-016). The
+  `<details>` showed three banners when expanded, was **rejected by the owner**, and was
+  replaced by the icon links (PR #5, D-018).
+- Attribution policy D-017 (CLAUDE.md §5a). Historical commits authored as
+  `Claude <noreply@anthropic.com>` remain. They are not rewritten without owner approval.
 
-1. **Logo provenance unknown** (D-004). Logo assets cannot go into the public repo or README.
-2. **"Brizo" trademark not cleared.**
-3. **Licence not chosen** (D-005, by design, until the engine is chosen).
-4. Environment note: the Claude Code sandbox egress proxy blocks `img.shields.io`,
-   `camo.githubusercontent.com` and GitHub's static CSS/Mermaid viewer, so README checks on
-   github.com were partially unstyled. Mitigation: badges are local SVGs. The Mermaid
-   diagram could not be visually confirmed from the sandbox; confirm in a normal browser.
+### Task 002 (complete)
+Feasibility research and runner probe merged via PR #2: `docs/research/`, `research/probe/`.
+Verdict at that time: CONDITIONAL GO on Gecko, pending measured builds (this task).
 
-## Where the private brand files are
-
-The git-ignored `branding-private/` folder exists **only in the session container**, which is
-ephemeral. Durable copies:
-
-- **Private review page v1, brand assets** (owner's claude.ai account): https://claude.ai/artifact/DV8wzGrqYP72w57aH4X7Yr
-- **Private review page v2, animated sailing hero**: https://claude.ai/artifact/YKYxLma6FJ5WpT6x1ucn75
-- **Zip package v2** `brizo-hero-review-v2.zip` (hero SVGs, stills, GIFs, generation source), delivered in the Task 002 conversation. Rebuild with `node scripts/brand/build-private-hero.mjs --version v2`.
-- **Zip package** `brizo-brand-review-v1.zip` (source + all exports), delivered in the Task 001
-  Claude conversation. The owner should keep a copy.
-
-To regenerate in a new session: place `brizo-mark.svg` and `brizo-mark-small.svg` from the zip's
-`source/` into `branding-private/source/`, then `cd scripts/brand && npm ci && npm run build:brand`.
-
-## Owner decisions needed
-
-1. Approve / adjust logo master v1 and the small-size variant.
-2. Confirm the reference image's origin and rights; decide on a trademark search.
-3. Approve the tagline, the Inter wordmark and the proposed neutral/semantic colours.
-4. Review and (optionally) mark the draft PR ready; merging is the owner's call.
-5. Approve starting **Task 002: Engine feasibility study**.
-
-## Continuation instructions
-
-1. `git fetch origin && git checkout claude/great-gates-umqsa8 && git pull` (or `main` if the PR has merged).
-2. Read `CLAUDE.md`, this file and `docs/DECISIONS.md`.
-3. `cd scripts/brand && npm ci && npm run build:readme && npm run validate`. This must pass with no git diff.
-4. Only after owner approval: begin Task 002 per `docs/TECHNICAL_RESEARCH_PLAN.md`, on a new branch,
-   updating this file before and after each subtask.
-
-## Task 002 handover (2026-11-25)
-
-| Branch | PR | Contents |
-| --- | --- | --- |
-| `claude/great-gates-umqsa8` | [ish4ra/Brizo#1](https://github.com/ish4ra/Brizo/pull/1) (draft) | Task 001 + 002A (private hero tooling, appearance note, reduced-motion fix, toggle reference). Head `9f6c21f` |
-| `claude/task-002-engine-feasibility` | [ish4ra/Brizo#2](https://github.com/ish4ra/Brizo/pull/2) (draft, base = PR #1 branch) | Feasibility research, runner probe, ADR (CONDITIONAL GO, Gecko) |
-
-Merge order if approved: PR #1 into `main`, then retarget PR #2 to `main`.
-
-**Next task (needs owner approval): Task 003, the Gecko build experiment C1–C4**
-(`docs/research/ARCHITECTURE_DECISION_PROPOSAL.md` §3). Start a new branch from
-`claude/task-002-engine-feasibility` (or `main` after merges). Bounded CI only,
-no product code. Check Apple SDK terms before C3.
-
-Resume checklist: `git fetch origin`, then check out the research branch, then
-`cd scripts/brand && npm ci && npm run build:readme && npm run validate` (must pass with no diff).
+### Task 001 (complete)
+Foundation merged via PR #1: CLAUDE.md, docs, brand tooling `scripts/brand/`, validator and CI,
+source-independent README artwork, private logo master and 100 private exports.
+Original branch: `claude/great-gates-umqsa8`. Older rule "logo assets may never be public"
+is now narrowed by D-015 (hero files only).

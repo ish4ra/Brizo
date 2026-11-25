@@ -77,7 +77,7 @@ a compact sun/moon note with an accurately labelled link to
 `https://github.com/settings/appearance`. A real Sun/Moon toggle is specified
 for the future website (`docs/website/`), but is not deployed.
 
-## D-013 · 2026-11-25 · Accepted: Public hero uses a temporary, distinct sailboat motif
+## D-013 · 2026-11-25 · Superseded by D-015: Public hero uses a temporary, distinct sailboat motif
 The owner approved hero V2's composition and animation. A bounded provenance check
 (BRAND_PROVENANCE) did not establish usage rights for the provisional logo. The
 public README hero therefore keeps V2's layout, motion, waves, wake, wordmark
@@ -89,3 +89,29 @@ passing the private boat renderer to `hero()`, after rights are confirmed.
 ## D-014 · 2026-11-25 · Risk recorded: "BRIZO" Class 9 registration reported
 Aggregators report Delta Faucet Company's BRIZO registration covering Class 9.
 To be verified in USPTO TSDR; the project name needs owner and legal review before public launch.
+
+## D-015 · 2026-11-25 · Accepted (owner decision): Publish the provisional V2 sailing hero
+The owner rejected the temporary sloop (D-013) and chose to publish the approved V2
+hero, with the exact provisional mark, geometry and colours, despite the unresolved
+provenance. This decision does **not** establish third-party usage rights or
+trademark clearance (see BRAND_PROVENANCE, D-014). Scope is limited to
+`assets/readme/hero-{light,dark}.svg` and their static PNGs, whitelisted in
+`validate.mjs`. All other logo assets (exports, icons, master, reference) stay
+private. The temporary motif remains recoverable from git history (commit `e809bd7`).
+
+## D-016 · 2026-11-25 · Superseded by D-018: README appearance previews
+The long appearance-settings line was replaced with a collapsed `<details>` control
+(sun/moon icons, bottom-right of the hero). It shows explicit light **and** dark
+renderings of the banner whatever the viewer's theme, with reduced-motion fallbacks.
+It does not change GitHub's theme or the main hero. No scripts, iframes or external services.
+
+## D-017 · 2026-11-25 · Accepted: Commit attribution policy
+Future commits are authored as the owner's public GitHub no-reply identity, with no
+Claude co-author trailer (CLAUDE.md §5a). Existing history is unchanged.
+
+## D-018 · 2026-11-25 · Accepted (owner decision): Preview icons are plain links; D-016 superseded
+The `<details>` preview (D-016) showed three banners when expanded and was rejected.
+It is replaced by two independent 14 px icon links under the hero: the sun opens
+`hero-light.svg` and the moon opens `hero-dark.svg` on raw.githubusercontent.com
+(served as `image/svg+xml`). The README always renders exactly one hero banner.
+Nothing changes GitHub's theme.
