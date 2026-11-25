@@ -14,7 +14,8 @@ Owner approved: the V2 hero design, merging PR #1 then PR #2 after verification,
 
 Phases (update as you go):
 - [ ] T1 Gecko Linux x64 experiment: branch `claude/task-003-gecko-build`, workflow `gecko-build-linux.yml`, Firefox **161.0** (`FIREFOX_161_0_RELEASE`)
-  - Run 1: https://github.com/ish4ra/Brizo/actions/runs/45580332174 (commit `e504837`, started 2026-11-25 08:53 UTC). **If this session ends: check this run's result before re-running anything.**
+  - Run 1: https://github.com/ish4ra/Brizo/actions/runs/45580332174 (`e504837`). **FAILED:** source fetch and verify 26 s, configure 107 s OK; the runner received a shutdown signal (exit 143) **18 min into compile** (09:17 UTC). The always() steps were skipped, so no metrics survived. Suspected memory exhaustion (4 parallel jobs, 15.6 GiB, no swap); unconfirmed because the metrics were lost with the VM.
+  - Run 2: same config plus a 16 GiB swapfile, with memory, disk and build progress streamed to the job log every 60 s (evidence survives a runner loss)
 - [x] T2 Logo provenance check: rights NOT established (no metadata or authorship record; only a Google/Skia ICC profile). Name: a reported live BRIZO Class 9 registration by Delta Faucet Co. (unverified at USPTO). Decision: the public hero uses a distinct temporary motif
 - [x] T3 Public hero = V2 layout and animation with a temporary distinct sloop motif (`e809bd7`); live GitHub render verified (4 theme × motion combos, 0 broken images)
 - [x] T4 PR #1 merged → `main` `eae736c`; PR #2 retargeted, `main` merged in (`66ffefd`), merged → `main` **`5d020fc`** (merge commits, history preserved, original branches kept)

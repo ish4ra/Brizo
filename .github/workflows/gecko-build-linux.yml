@@ -48,6 +48,13 @@ jobs:
             sudo docker image prune --all --force >/dev/null'
           df -h / | tee "$METRICS/disk-after-cleanup.txt"
 
+      - name: Add swap (run 1 lost its runner ~18 min into compile; memory suspected)
+        run: |
+          free -m; swapon --show || true
+          sudo fallocate -l 16G /swapfile-brizo && sudo chmod 600 /swapfile-brizo
+          sudo mkswap /swapfile-brizo >/dev/null && sudo swapon /swapfile-brizo
+          free -m | tee "$METRICS/memory-after-swap.txt"
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -76,9 +83,18 @@ jobs:
           # Leave time for logs, sccache stats and artifact upload if the
           # compile runs long; sccache keeps finished objects for a resumed run.
           set +e
+          # Stream evidence to the job log every 60 s: if the runner is lost
+          # again, the log (unlike files on the VM) survives.
+          ( while true; do
+              echo "[res $(date -u +%H:%M:%S)] $(free -m | awk '/Mem:/{printf "mem used=%sM avail=%sM",$3,$7} /Swap:/{printf " swap used=%sM",$3}') disk_avail=$(df -BG --output=avail / | tail -1 | tr -d ' ') load=$(cut -d' ' -f1 /proc/loadavg) | $(tail -n 1 "$METRICS/build.log" 2>/dev/null | cut -c1-150)"
+              sleep 60
+            done ) &
+          TICKER=$!
           "$GITHUB_WORKSPACE/engine/gecko/step.sh" "$METRICS/timings.csv" compile \
             timeout 290m ./mach --no-interactive build > "$METRICS/build.log" 2>&1
           RC=$?
+          kill $TICKER 2>/dev/null
+          sudo dmesg 2>/dev/null | grep -iE "oom|killed process" | tail -n 20 | tee "$METRICS/oom.txt"
           tail -n 150 "$METRICS/build.log"
           gzip -k "$METRICS/build.log" && rm "$METRICS/build.log"
           echo "compile exit code: $RC (124 = hit the 290 min timeout)"
