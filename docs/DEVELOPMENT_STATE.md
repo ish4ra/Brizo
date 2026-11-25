@@ -3,13 +3,21 @@
 > Single source of truth for resuming work. Update it at every checkpoint.
 > Do not rely on chat history: this file plus `git log` must be enough.
 
-_Last updated: 2026-11-24 · end of Task 001_
+_Last updated: 2026-11-25 · Task 002 in progress_
 
 ## Active task
 
-**Task 001: Project initialization, branding preparation, repository foundation & animated README.**
-Status: **complete. Awaiting owner review** of the draft PR and the private brand review.
-Do **not** start Task 002 (engine feasibility) until the owner approves.
+**Task 002: Targeted README hero refinement, animated sailing logo (private), appearance control, and browser engine feasibility study.**
+Owner approved proceeding (2026-11-25). Not approved: merging PR #1, publishing logo assets, releases, engine selection, browser implementation.
+
+Plan / progress (update as you go):
+- [ ] A1 Animated exact-logo hero: PRIVATE (branding-private/), separate versioned package `brizo-hero-review-v2.zip`
+- [ ] A2 Public README hero: keep current source-independent hero unless rights are cleared; refactor generator so the logo version is a flag flip
+- [ ] A3 Compact appearance control (sun/moon + official GitHub appearance settings link, labelled honestly) + website theme-toggle design doc
+- [ ] A4 Checkpoint on `claude/great-gates-umqsa8` (PR #1), CI green
+- [ ] B  Feasibility research on dependent branch `claude/task-002-engine-feasibility` (PR → `claude/great-gates-umqsa8`)
+
+Task 001 (foundation) is complete; see git history up to `a283b9e`.
 
 ## Branch & checkpoints
 
