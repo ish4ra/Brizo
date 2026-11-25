@@ -1,0 +1,51 @@
+#!/usr/bin/env node
+// Build the PRIVATE sailing-logo README hero for owner review.
+//
+//   node build-private-hero.mjs [--version v2]
+//
+// Reads the private logo master (branding-private/source/brizo-mark.svg) and
+// writes ONLY into git-ignored branding-private/hero-<version>/. This file
+// contains no logo geometry. While logo provenance is unresolved
+// (docs/BRAND_PROVENANCE.md) the output must not be committed or published.
+//
+// When the owner confirms usage rights, publishing is a deliberate, reviewed
+// change: run the same hero() with the boat renderer from build-readme-assets
+// and update validate.mjs's leak check accordingly. Never bypass the check.
+import fs from 'node:fs';
+import path from 'node:path';
+import { PALETTE, REPO, renderPNG, svgBBox, write, fmt } from './lib.mjs';
+import { hero } from './build-readme-assets.mjs';
+
+const version = process.argv.includes('--version') ? process.argv[process.argv.indexOf('--version') + 1] : 'v2';
+const SRC = path.join(REPO, 'branding-private/source/brizo-mark.svg');
+const OUT = path.join(REPO, 'branding-private', `hero-${version}`);
+
+if (!fs.existsSync(SRC)) {
+  console.error('Missing private master branding-private/source/brizo-mark.svg.');
+  console.error('Restore it from brizo-brand-review-v1.zip (source/) — see docs/DEVELOPMENT_STATE.md.');
+  process.exit(1);
+}
+
+const svg = fs.readFileSync(SRC, 'utf8');
+const get = (id) => svg.match(new RegExp(`id="${id}"[^>]*\\sd="([^"]+)"`))[1];
+const m = { rear: get('rear-sail'), front: get('front-sail'), hull: get('hull') };
+const bb = svgBBox(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="-200 -200 1200 1300"><path d="${m.rear}"/><path d="${m.front}"/><path d="${m.hull}"/></svg>`);
+
+// Exact approved fills; geometry untouched (uniform scale + translate only).
+const boat = {
+  width: (h) => (h / bb.height) * bb.width,
+  render: ({ x, y, h }) => {
+    const s = h / bb.height;
+    return `<g transform="translate(${fmt(x - bb.x * s)} ${fmt(y - bb.y * s)}) scale(${fmt(s * 1e4) / 1e4})">` +
+      `<path fill="${PALETTE.lightSail}" d="${m.rear}"/><path fill="${PALETTE.primary}" d="${m.front}"/><path fill="${PALETTE.deepOcean}" d="${m.hull}"/></g>`;
+  },
+};
+
+const banner = '<!-- PRIVATE owner-review asset: contains the provisional Brizo logo. Do NOT commit or publish (docs/BRAND_PROVENANCE.md). -->\n';
+for (const theme of ['light', 'dark']) {
+  const out = hero(theme, { boat }).replace('<svg ', `${banner}<svg `);
+  write(path.join(OUT, `hero-sailing-${theme}.svg`), out);
+  write(path.join(OUT, 'static', `hero-sailing-${theme}.png`), renderPNG(out, 1280).png);
+  write(path.join(OUT, 'static', `hero-sailing-${theme}@2x.png`), renderPNG(out, 2560).png);
+}
+console.log(`Wrote private sailing hero to ${path.relative(REPO, OUT)}`);
