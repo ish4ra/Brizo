@@ -109,9 +109,26 @@ It does not change GitHub's theme or the main hero. No scripts, iframes or exter
 Future commits are authored as the owner's public GitHub no-reply identity, with no
 Claude co-author trailer (CLAUDE.md §5a). Existing history is unchanged.
 
-## D-018 · 2026-11-25 · Accepted (owner decision): Preview icons are plain links; D-016 superseded
+## D-018 · 2026-11-25 · Superseded by D-019: Preview icons are plain links; D-016 superseded
 The `<details>` preview (D-016) showed three banners when expanded and was rejected.
 It is replaced by two independent 14 px icon links under the hero: the sun opens
 `hero-light.svg` and the moon opens `hero-dark.svg` on raw.githubusercontent.com
 (served as `image/svg+xml`). The README always renders exactly one hero banner.
 Nothing changes GitHub's theme.
+
+## D-019 · 2026-11-25 · Accepted: Manual preview icons removed (supersedes D-018)
+The D-018 icon links opened raw SVGs in the same tab, taking visitors away from the repository.
+Bounded investigation on live github.com (temporary probe file, commits `b5717b3`/`5760ce6`):
+- **In-place switching is impossible.** GitHub strips `<style>`, `style=`, `class`,
+  `<input>` and `<label>`; SVG inside `<img>` can't receive clicks; no JavaScript.
+- **Author `target="_blank"` is stripped.** The link got `rel="nofollow"` and navigated the same tab.
+- **Viable but not adopted:** GitHub wraps a bare `<img>` in its own
+  `<a target="_blank" rel="noopener noreferrer">` to the image's file page. A responsive SVG
+  (CSS media query: icon at ≤ 64 px, full artwork otherwise) showed the small variant at 14 px,
+  and a click opened a **new tab** with the repository page kept (verified). Full-size display
+  in the new tab could not be confirmed from the sandbox (GitHub's file viewer needs JS that
+  is blocked there). It also needs two new SVG files that contain the logo, which widens the
+  D-015 whitelist and **requires owner approval**.
+- `<details>`/anchor previews duplicate banners (rejected under D-016).
+So the README keeps exactly one automatic, theme-aware hero, with reduced-motion fallbacks
+and no manual controls. The responsive-preview option can be adopted later on owner approval.

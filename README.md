@@ -7,7 +7,7 @@
   <img alt="Brizo — Fast. Private. Lightweight. Open. The Brizo sailboat sails across animated waves. Early development: architecture and foundation." src="assets/readme/hero-light.svg" width="100%">
 </picture>
 
-<p align="right"><a href="https://raw.githubusercontent.com/ish4ra/Brizo/main/assets/readme/hero-light.svg" title="Light preview: open the light banner artwork"><img src="assets/readme/icon-sun.svg" width="14" height="14" alt="Light preview"></a>&nbsp;<a href="https://raw.githubusercontent.com/ish4ra/Brizo/main/assets/readme/hero-dark.svg" title="Dark preview: open the dark banner artwork"><img src="assets/readme/icon-moon.svg" width="14" height="14" alt="Dark preview"></a></p>
+<br>
 
 [![Status: early development](assets/readme/badge-status.svg)](docs/DEVELOPMENT_STATE.md)
 [![Phase 0: foundation](assets/readme/badge-phase.svg)](docs/ROADMAP.md)
