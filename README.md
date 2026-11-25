@@ -138,7 +138,7 @@ Full detail is in [docs/FEATURE_REQUIREMENTS.md](docs/FEATURE_REQUIREMENTS.md).
 | Project documentation & rules | ✅ In place (this branch) |
 | Brand palette & guidelines | ✅ Drafted, owner review pending |
 | Logo | 🟡 Provisional candidate, provenance & trademark **unresolved** |
-| Browser engine / foundation | ⬜ Not selected; feasibility study next |
+| Browser engine / foundation | 🟡 Feasibility study done: [conditional recommendation](docs/research/README.md), owner decision pending |
 | Browser builds | ⬜ None exist |
 | Releases | ⬜ None exist |
 

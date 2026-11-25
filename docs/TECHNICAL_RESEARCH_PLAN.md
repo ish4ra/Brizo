@@ -1,6 +1,7 @@
 # Technical Research Plan: Phase 1 (Engine Feasibility)
 
-**Not started.** Requires owner approval before work begins.
+**Desk research and runner probe done (Task 002, 2026-11-25).** Results: [`docs/research/`](research/README.md).
+Verdict: CONDITIONAL GO (Gecko). The remaining step is the bounded build experiment (C1–C4), which needs owner approval.
 
 ## Question
 
