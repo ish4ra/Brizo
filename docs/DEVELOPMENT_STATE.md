@@ -14,7 +14,7 @@ Plan / progress (update as you go):
 - [x] A1 Animated exact-logo hero: PRIVATE (branding-private/), separate versioned package `brizo-hero-review-v2.zip`
 - [x] A2 Public README hero: keep current source-independent hero unless rights are cleared; refactor generator so the logo version is a flag flip
 - [x] A3 Compact appearance control (sun/moon + official GitHub appearance settings link, labelled honestly) + website theme-toggle design doc
-- [ ] A4 Checkpoint on `claude/great-gates-umqsa8` (PR #1), CI green
+- [x] A4 Checkpoint on `claude/great-gates-umqsa8` (PR #1): `f9b68e7` + follow-up
 - [ ] B  Feasibility research on dependent branch `claude/task-002-engine-feasibility` (PR → `claude/great-gates-umqsa8`)
 
 Task 001 (foundation) is complete; see git history up to `a283b9e`.
@@ -69,7 +69,9 @@ D-005 (licence) and D-009 (engine) pending.
 The git-ignored `branding-private/` folder exists **only in the session container**, which is
 ephemeral. Durable copies:
 
-- **Private review page** (owner's claude.ai account): https://claude.ai/artifact/DV8wzGrqYP72w57aH4X7Yr
+- **Private review page v1, brand assets** (owner's claude.ai account): https://claude.ai/artifact/DV8wzGrqYP72w57aH4X7Yr
+- **Private review page v2, animated sailing hero**: https://claude.ai/artifact/YKYxLma6FJ5WpT6x1ucn75
+- **Zip package v2** `brizo-hero-review-v2.zip` (hero SVGs, stills, GIFs, generation source), delivered in the Task 002 conversation. Rebuild with `node scripts/brand/build-private-hero.mjs --version v2`.
 - **Zip package** `brizo-brand-review-v1.zip` (source + all exports), delivered in the Task 001
   Claude conversation. The owner should keep a copy.
 

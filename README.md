@@ -7,7 +7,7 @@
   <img alt="Brizo — Fast. Private. Lightweight. Open. Early development: architecture and foundation." src="assets/readme/hero-light.svg" width="100%">
 </picture>
 
-<sub><a href="https://github.com/settings/appearance" title="Opens GitHub's appearance settings (sign-in required). README content cannot change your theme."><img src="assets/readme/icon-sun.svg" width="12" height="12" alt="Light"> <img src="assets/readme/icon-moon.svg" width="12" height="12" alt="Dark"></a> Artwork adapts to light and dark mode automatically · <a href="https://github.com/settings/appearance">GitHub appearance settings</a></sub>
+<sub><a href="https://github.com/settings/appearance" title="Opens GitHub's appearance settings (sign-in required). README content cannot change your theme."><img src="assets/readme/icon-sun.svg" width="12" height="12" alt="Light"><img src="assets/readme/icon-moon.svg" width="12" height="12" alt="Dark"></a> Artwork adapts to light and dark mode automatically · <a href="https://github.com/settings/appearance">GitHub appearance settings</a></sub>
 
 <br>
 
