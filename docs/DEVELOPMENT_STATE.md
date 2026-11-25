@@ -18,8 +18,8 @@ Plan / progress (update as you go):
 - [ ] B  Feasibility research on dependent branch `claude/task-002-engine-feasibility` (PR → `claude/great-gates-umqsa8`)
   - [x] B1 Runner probe (run 45566601756, all 6 jobs green) → `research/probe/RESULTS-2026-11-25.md`
   - [x] B2 Primary sources gathered (GitHub docs, Chromium docs, ungoogled-chromium/Helium, Zen, uBO/uBOL, adblock-rust, MDN, polyfill, Electron, Qt, CEF, yt-dlp, FFmpeg, aria2)
-  - [ ] B3 Research documents in `docs/research/`
-  - [ ] B4 Architecture decision proposal (GO / CONDITIONAL GO / NO-GO)
+  - [x] B3 Research documents in `docs/research/`
+  - [x] B4 Architecture decision proposal: **CONDITIONAL GO** (Gecko); next = Task 003 build experiment C1–C4
   - [ ] B5 Draft PR for the research branch
 
 Task 001 (foundation) is complete; see git history up to `a283b9e`.

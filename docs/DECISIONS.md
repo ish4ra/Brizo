@@ -48,6 +48,13 @@ No merges or releases without owner approval.
 ## D-009 · 2026-11-24 · Pending: Browser foundation
 Not selected. See TECHNICAL_RESEARCH_PLAN.md (Phase 1).
 
+**Update 2026-11-25 (Proposed, awaiting owner):** Task 002 research recommends a
+**CONDITIONAL GO** on a Gecko (Firefox Release) downstream patch set, conditional on
+measured free-runner builds (conditions C1–C4). Fallbacks: a Chromium patch set
+(needs donated/paid compute), and a CEF prototype shell. See
+`docs/research/ARCHITECTURE_DECISION_PROPOSAL.md`. D-005 licence recommendation:
+MPL-2.0 (not applied).
+
 ## D-010 · 2026-11-25 · Accepted: Sailing-logo hero stays private until rights are cleared
 The animated hero with the exact sailboat mark (boat left, type block moved
 right, surge/bob/rock motion, parallax waves, wake) is built by

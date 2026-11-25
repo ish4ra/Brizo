@@ -6,6 +6,13 @@ releases yet, so there are no version numbers.
 
 ## [Unreleased]
 
+### Added — Task 002 (part B): engine feasibility research
+- `docs/research/`: engine comparison, free-build feasibility, extension
+  compatibility and test plan, content blocking, Media Grabber, performance
+  benchmark plan, security architecture, licence audit, architecture decision
+  proposal (CONDITIONAL GO), and a dated source register.
+- Bounded zero-cost runner probe workflow and measured results (`research/probe/`).
+
 ### Added — Task 002 (part A): hero refinement & appearance
 - Sailing-logo hero mode in `build-readme-assets.mjs` and a private build script
   (`build-private-hero.mjs`); output stays in git-ignored `branding-private/`.

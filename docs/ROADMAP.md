@@ -6,7 +6,7 @@
 | Phase | Name | Goal | Exit criteria | Status |
 | --- | --- | --- | --- | --- |
 | 0 | Foundation & branding | Docs, rules, brand system, README, continuity | Task 001 PR approved by owner | **In progress** |
-| 1 | Engine feasibility | Choose a foundation (Chromium, Brave/brave-core, Firefox/Gecko, other) that can be built and maintained on free infrastructure | Written study plus at least one experimental CI build attempt, owner decision recorded | Next |
+| 1 | Engine feasibility | Choose a foundation (Chromium, Brave/brave-core, Firefox/Gecko, other) that can be built and maintained on free infrastructure | Written study plus at least one experimental CI build attempt, owner decision recorded | **Desk study + runner probe done** (CONDITIONAL GO); build experiment pending |
 | 2 | Free CI build pipeline | Reproducible unbranded builds on GitHub-hosted runners for the first target | Downloadable test artifact for macOS Apple Silicon | Planned |
 | 3 | Core browsing prototype | Branded browser: tabs, navigation, bookmarks, history, themes, updates design | Owner can browse daily-test sites on macOS arm64 | Planned |
 | 4 | Privacy engine | Default network and cosmetic blocking, per-site controls | Passes a documented blocking test set | Planned |
