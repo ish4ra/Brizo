@@ -1,0 +1,144 @@
+# Task 003 — Gecko build experiment, Windows x64.
+# EXPERIMENTAL feasibility build of unmodified, unbranded Firefox source on a
+# standard GitHub-hosted windows-latest runner (free for public repositories),
+# using Mozilla's official MozillaBuild environment and the Visual Studio /
+# Windows SDK that GitHub installs on the runner (no repackaged "vs" download).
+name: Gecko build experiment (Windows x64)
+
+on:
+  push:
+    branches: ["claude/task-003-gecko-build"]
+    paths: ["engine/gecko/triggers/windows.txt"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gecko-build-windows
+  cancel-in-progress: false
+
+env:
+  FIREFOX_VERSION: "161.0"
+  SCCACHE_GHA_ENABLED: "true"
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 355
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Paths, tools and resource monitor
+        run: |
+          echo "METRICS=$RUNNER_TEMP/metrics" >> "$GITHUB_ENV"
+          mkdir -p "$RUNNER_TEMP/metrics"
+          pip install --quiet "psutil==7.0.0" "websockets==15.0.1"
+          nohup python engine/gecko/monitor.py "$RUNNER_TEMP/metrics/resources.csv" "D:\\" >/dev/null 2>&1 &
+          echo $! > "$RUNNER_TEMP/metrics/monitor.pid"
+          df -h /c /d | tee "$RUNNER_TEMP/metrics/disk-initial.txt" || true
+
+      - name: Install MozillaBuild (official Mozilla build environment)
+        shell: pwsh
+        run: |
+          $sw = [Diagnostics.Stopwatch]::StartNew()
+          Invoke-WebRequest -Uri "https://ftp.mozilla.org/pub/mozilla/libraries/win32/MozillaBuildSetup-Latest.exe" -OutFile "$env:RUNNER_TEMP\MozillaBuildSetup.exe"
+          (Get-FileHash "$env:RUNNER_TEMP\MozillaBuildSetup.exe" -Algorithm SHA256).Hash | Tee-Object "$env:METRICS\mozillabuild-sha256.txt"
+          Start-Process -FilePath "$env:RUNNER_TEMP\MozillaBuildSetup.exe" -ArgumentList "/S" -Wait
+          Get-Content C:\mozilla-build\VERSION -ErrorAction SilentlyContinue | Tee-Object "$env:METRICS\mozillabuild-version.txt"
+          "mozillabuild_install,$($sw.Elapsed.TotalSeconds)" | Out-File -Append "$env:METRICS\pwsh-timings.csv"
+
+      - name: Locate installed Visual Studio and Windows SDK
+        shell: pwsh
+        run: |
+          $vs = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          $ver = (Get-Content "$vs\VC\Auxiliary\Build\Microsoft.VCToolsVersion.default.txt").Trim()
+          $vc = "$vs\VC\Tools\MSVC\$ver"
+          "VC_PATH=$vc" | Out-File -Append $env:GITHUB_ENV
+          "WINDOWSSDKDIR=${env:ProgramFiles(x86)}\Windows Kits\10" | Out-File -Append $env:GITHUB_ENV
+          "VS: $vs / MSVC $ver" | Tee-Object "$env:METRICS\toolchain.txt"
+          Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\Include" | Select-Object -ExpandProperty Name | Tee-Object -Append "$env:METRICS\toolchain.txt"
+
+      - name: Fetch and verify Firefox source
+        id: src
+        run: engine/gecko/step.sh "$METRICS/timings.csv" fetch_verify_unpack engine/gecko/fetch-source.sh "$FIREFOX_VERSION" "$RUNNER_TEMP/src"
+
+      - name: Set up sccache
+        uses: mozilla-actions/sccache-action@v0.0.9
+
+      - name: Install mozconfig
+        run: cp engine/gecko/mozconfig.windows-x64 "$(cygpath -u '${{ steps.src.outputs.srcdir }}')/mozconfig"
+
+      - name: Configure (inside MozillaBuild)
+        shell: cmd
+        run: |
+          set MOZILLABUILD=C:\mozilla-build\
+          C:\mozilla-build\msys2\usr\bin\bash.exe -l -c "cd \"$(cygpath -u '%GITHUB_WORKSPACE%')\" && engine/gecko/step.sh \"$(cygpath -u '%METRICS%')/timings.csv\" configure engine/gecko/win-mach.sh \"$(cygpath -u '${{ steps.src.outputs.srcdir }}')\" configure > \"$(cygpath -u '%METRICS%')/configure.log\" 2>&1; RC=$?; tail -n 80 \"$(cygpath -u '%METRICS%')/configure.log\"; exit $RC"
+
+      - name: Compile (inside MozillaBuild)
+        id: compile
+        continue-on-error: true
+        shell: cmd
+        run: |
+          set MOZILLABUILD=C:\mozilla-build\
+          C:\mozilla-build\msys2\usr\bin\bash.exe -l -c "cd \"$(cygpath -u '%GITHUB_WORKSPACE%')\" && engine/gecko/step.sh \"$(cygpath -u '%METRICS%')/timings.csv\" compile timeout 290m engine/gecko/win-mach.sh \"$(cygpath -u '${{ steps.src.outputs.srcdir }}')\" build > \"$(cygpath -u '%METRICS%')/build.log\" 2>&1; RC=$?; tail -n 150 \"$(cygpath -u '%METRICS%')/build.log\"; gzip -f \"$(cygpath -u '%METRICS%')/build.log\"; exit $RC"
+
+      - name: Package (inside MozillaBuild)
+        id: pkg
+        if: steps.compile.outcome == 'success'
+        shell: cmd
+        run: |
+          set MOZILLABUILD=C:\mozilla-build\
+          C:\mozilla-build\msys2\usr\bin\bash.exe -l -c "cd \"$(cygpath -u '%GITHUB_WORKSPACE%')\" && engine/gecko/step.sh \"$(cygpath -u '%METRICS%')/timings.csv\" package engine/gecko/win-mach.sh \"$(cygpath -u '${{ steps.src.outputs.srcdir }}')\" package > \"$(cygpath -u '%METRICS%')/package.log\" 2>&1; RC=$?; tail -n 60 \"$(cygpath -u '%METRICS%')/package.log\"; exit $RC"
+
+      - name: Collect package
+        id: out
+        if: steps.pkg.outcome == 'success'
+        run: |
+          SRC="$(cygpath -u '${{ steps.src.outputs.srcdir }}')"
+          PKG=$(ls "$SRC"/../obj-brizo/dist/firefox-*.zip | head -1)
+          mkdir -p "$RUNNER_TEMP/out"
+          OUT="$RUNNER_TEMP/out/brizo-gecko-experiment-${FIREFOX_VERSION}-windows-x86_64.zip"
+          cp "$PKG" "$OUT"
+          (cd "$RUNNER_TEMP/out" && sha256sum "$(basename "$OUT")" > SHA256SUMS.txt && cat SHA256SUMS.txt)
+          echo "pkg=$OUT" >> "$GITHUB_OUTPUT"
+
+      - name: Smoke test (headless, packaged build)
+        if: steps.out.outcome == 'success'
+        continue-on-error: true
+        run: |
+          mkdir -p "$RUNNER_TEMP/app" && unzip -q "${{ steps.out.outputs.pkg }}" -d "$RUNNER_TEMP/app"
+          engine/gecko/step.sh "$METRICS/timings.csv" smoke_test python engine/gecko/smoke_test.py "$RUNNER_TEMP/app/firefox/firefox.exe" "$METRICS/smoke"
+
+      - name: Summarise measurements
+        if: always()
+        run: |
+          kill "$(cat "$METRICS/monitor.pid")" || true
+          sccache --show-stats > "$METRICS/sccache-stats.txt" 2>&1 || true
+          df -h /c /d | tee "$METRICS/disk-final.txt" || true
+          python engine/gecko/write_env.py "$METRICS" windows-latest "${{ steps.src.outputs.source_sha256 }}" "${{ steps.compile.outcome }}" "${{ steps.out.outputs.pkg }}"
+          python engine/gecko/summarize.py "$METRICS"
+
+      - name: Upload metrics and logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gecko-windows-x64-metrics
+          path: ${{ env.METRICS }}
+          retention-days: 30
+
+      - name: Upload experimental build
+        if: steps.out.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: brizo-gecko-experiment-${{ env.FIREFOX_VERSION }}-windows-x86_64
+          path: ${{ runner.temp }}/out
+          retention-days: 30
+          compression-level: 0
