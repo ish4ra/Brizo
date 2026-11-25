@@ -30,20 +30,23 @@ Details and evidence: `docs/research/GECKO_BUILD_EXPERIMENT.md`.
 | macOS arm64 #1 | [45581403273](https://github.com/ish4ra/Brizo/actions/runs/45581403273) | **Compile timed out** (exit 142 after 17,401 s, ≈ 55% done; est. cold ≈ 8.5 h). GitHub showed green because of `continue-on-error`. Metrics artifact 15029122780 |
 | Windows x64 | — | Not started |
 
+### Task 003 continuation work (this session)
+- README controls investigated and removed (D-019, PR #6 → `main` `d36c6d9`).
+- Artifact path bug fixed (canonical `RUNNER_TEMP`). Acceptance gates added. macOS/Windows staged
+  (up to 3 chained jobs, local sccache handoff). Preflight runs 45635212713, 45635843712 and
+  45637174497 all pass. Sandbox methodology fixed: official Firefox passes 7/7 seccomp and 7/7
+  userns with an AppArmor userns profile.
+- Retries triggered (one each), run IDs recorded below once known.
+
 ### Continuation steps (exact)
 1. `git fetch origin && git checkout claude/task-003-gecko-build && git pull`.
-2. Check runs 45584240076 and 45581403273 once (GitHub UI, or
-   `curl -s https://api.github.com/repos/ish4ra/Brizo/actions/runs/<id>/jobs`).
-3. For each finished run: download the `gecko-*-metrics` artifact (timings, resource CSV, smoke
-   results, `results.json`) and, if present, the `brizo-gecko-experiment-*` package artifact. Record
-   compile time, peak RAM, swap and disk, package size, SHA-256 and smoke results in
-   `docs/research/GECKO_BUILD_EXPERIMENT.md` (create it), and in the table above.
-4. If Linux attempt 2 failed: read the streamed `[res …]` lines in its job log and diagnose
-   before any change. Do not retry the identical configuration.
-5. After Linux is evaluated, start Windows: append a line to `engine/gecko/triggers/windows.txt`, then push.
-6. Then: security-update sustainability assessment and the GO / CONDITIONAL GO / NO-GO verdict
-   (`docs/research/ARCHITECTURE_DECISION_PROPOSAL.md` conditions C1–C4).
-7. Commit as the owner identity per CLAUDE.md §5a. Do not merge PR #3.
+2. Check the retry runs listed in the table (one check each; do not poll).
+3. For each finished run, read the job summary's **Acceptance gate** table and the
+   `gecko-*-metrics*` artifact, and record the results in `docs/research/GECKO_BUILD_EXPERIMENT.md`.
+4. Download links: an `brizo-gecko-experiment-161.0-<platform>` artifact (without a
+   `-DIAGNOSTIC` suffix) means the security gate passed.
+5. Do not re-trigger a platform without a documented, evidence-backed change.
+6. Then: security-update sustainability assessment and the architecture verdict.
 
 ### Branding (current, supersedes older notes below)
 - Public README hero = owner-selected **provisional V2 sailing hero** (D-015). Only

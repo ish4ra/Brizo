@@ -77,6 +77,51 @@ waived.
 - **Windows x64:** no data yet.
 - No package is downloadable yet. No platform is "supported".
 
-## Sections updated as work proceeds
+## Artifact upload failure (Linux #2): root cause and fix
 
-- Sandbox investigation · workflow corrections · preflight results · retries.
+Root cause: `actions/upload-artifact` rejects paths with `.`/`..` segments, and the workflow
+uploaded `${{ github.workspace }}/../metrics`. The metrics upload failed and the package upload
+never ran. **Fix:** every uploaded path is now a canonical `RUNNER_TEMP` path. **Preflight**
+([45635212713](https://github.com/ish4ra/Brizo/actions/runs/45635212713),
+[45635843712](https://github.com/ish4ra/Brizo/actions/runs/45635843712)): dummy metrics and
+packages round-tripped with SHA-256 verification on `ubuntu-latest`, `windows-latest` and
+`macos-latest`. A 2 GiB payload uploaded from macOS in **25 s** and downloaded intact.
+
+## Sandbox investigation: resolved methodology flaws, no Firefox defect found
+
+Baseline: **Mozilla's official Firefox 161.0 Linux build** (verified via KEY → signed SHA256SUMS
+→ hash `3e9b1e51…25733`), preflight [45637174497](https://github.com/ish4ra/Brizo/actions/runs/45637174497):
+
+| Evidence | Without AppArmor profile | With Ubuntu-style AppArmor userns profile |
+| --- | --- | --- |
+| Host | `kernel.apparmor_restrict_unprivileged_userns = 1` (Ubuntu default on the runner) | same |
+| Firefox's own report (`Troubleshoot.snapshot().sandbox`) | level 6 configured / 6 effective, seccomp-BPF ✓, **`hasUserNamespaces: false`** | level 6/6, seccomp-BPF ✓, **`hasUserNamespaces: true`** |
+| Web-content ("tab") processes in seccomp filter mode | **7/7** | **7/7** |
+| Web-content processes in their own user namespace | blocked by environment | **7/7** |
+| Other children | fork server seccomp 0 (unsandboxed by design: it forks content processes, which sandbox themselves); rdd 2; utility 2 | same |
+| about:preferences / about:addons at runtime (Marionette chrome context) | ✅ "Settings" / ✅ "Add-ons Manager" | ✅ / ✅ |
+
+Conclusions:
+1. Attempt 2's "9/10 seccomp" counted the **fork server** as a content process. That was a
+   classification flaw in the test, not a sandbox failure. The test now classifies processes by type.
+2. Attempt 2's "0/10 user namespaces" was **environmental**: Ubuntu's AppArmor restriction
+   blocks unprivileged user namespaces for binaries without a profile. Ubuntu's own Firefox package
+   ships a profile granting `userns` for this reason. With an equivalent profile, the official
+   build shows full namespace isolation. The build workflow now installs that profile before
+   testing. **Nothing is disabled or relaxed. The profile enables Firefox's namespace layer.**
+3. BiDi refuses privileged `about:` pages by design. They are now tested through Marionette's
+   privileged context, with Mozilla's documented `MOZ_REMOTE_ALLOW_SYSTEM_ACCESS=1` opt-in
+   for the test process only.
+4. A user namespace reported as unavailable is recorded as **`blocked-by-environment`**, never as a pass.
+
+## Cache findings
+
+- Actions cache at preflight: **6,601 entries, 4.03 GiB** (limit 10 GiB). The 859 (Linux) and
+  461 (macOS) sccache write errors are therefore **not** a size-limit effect. Throttling of many
+  small cache writes is the likely cause [A].
+- macOS/Windows now use a local-disk sccache directory handed between chained jobs as an
+  artifact, which avoids the cache service entirely.
+
+## Retries (one each, after preflight)
+
+See the run table in `docs/DEVELOPMENT_STATE.md`. Results will be added here.
