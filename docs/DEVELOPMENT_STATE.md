@@ -54,7 +54,7 @@ configuration that already succeeded. Builds start **only** by editing
   `validate.mjs` whitelists exactly those files. Everything else (master, exports, icons,
   reference) stays private in git-ignored `branding-private/`.
 - Provenance and trademark are **unresolved** (BRAND_PROVENANCE, D-014). Nothing is cleared.
-- Appearance previews (D-018): two 14 px icon links under the hero (sun → light SVG,
+- Appearance controls removed (D-019); the hero is automatic and theme-aware only. Earlier: D-018 icon links (sun → light SVG,
   moon → dark SVG on raw.githubusercontent.com). Exactly one hero banner is shown on the page.
 - Private review pages: v1 brand https://claude.ai/artifact/DV8wzGrqYP72w57aH4X7Yr ·
   hero https://claude.ai/artifact/YKYxLma6FJ5WpT6x1ucn75. Packages `brizo-brand-review-v1.zip`,
