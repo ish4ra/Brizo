@@ -1,2 +1,3 @@
 Touch this file to start the linux Gecko experiment build (see docs/DEVELOPMENT_STATE.md).
 linux run 2 requested 2026-11-25T09:18:59Z: +16G swap, streamed resource log
+linux attempt 3 requested 2026-11-25T14:45:03Z: artifact-path fix + smoke v2 (AppArmor userns profile); build config unchanged
