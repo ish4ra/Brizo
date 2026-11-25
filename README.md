@@ -7,7 +7,7 @@
   <img alt="Brizo — Fast. Private. Lightweight. Open. The Brizo sailboat sails across animated waves. Early development: architecture and foundation." src="assets/readme/hero-light.svg" width="100%">
 </picture>
 
-<div align="right"><details><summary><img src="assets/readme/icon-sun.svg" width="14" height="14" alt="Light preview">&nbsp;<img src="assets/readme/icon-moon.svg" width="14" height="14" alt="Dark preview"></summary>
+<div align="right"><details><summary><a name="appearance-preview"><img src="assets/readme/icon-sun.svg" width="14" height="14" alt="Light preview">&nbsp;<img src="assets/readme/icon-moon.svg" width="14" height="14" alt="Dark preview"></a></summary>
 
 <picture>
   <source media="(prefers-reduced-motion: reduce)" srcset="assets/readme/static/hero-light.png">
