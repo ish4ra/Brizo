@@ -18,7 +18,13 @@ Phases (update as you go):
 - [x] T2 Logo provenance check: rights NOT established (no metadata or authorship record; only a Google/Skia ICC profile). Name: a reported live BRIZO Class 9 registration by Delta Faucet Co. (unverified at USPTO). Decision: the public hero uses a distinct temporary motif
 - [x] T3 Public hero = V2 layout and animation with a temporary distinct sloop motif (`e809bd7`); live GitHub render verified (4 theme × motion combos, 0 broken images)
 - [x] T4 PR #1 merged → `main` `eae736c`; PR #2 retargeted, `main` merged in (`66ffefd`), merged → `main` **`5d020fc`** (merge commits, history preserved, original branches kept)
-- [ ] T5 Platform builds: macOS arm64, then Windows x64 (incremental, after Linux evidence)
+- [ ] T5 Platform builds (incremental)
+  - macOS arm64 run 1: https://github.com/ish4ra/Brizo/actions/runs/45581403273 (commit `49eaca1`, native `macos-latest`, Xcode 26.6 SDK; Firefox 161 needs SDK ≥ 26.5)
+  - Windows x64: workflow prepared after Linux evidence; native `windows-latest`, VC_PATH/WINDOWSSDKDIR from the installed VS (no `vs` bootstrap)
+- Draft PR for the experiment: [ish4ra/Brizo#3](https://github.com/ish4ra/Brizo/pull/3) (do not merge without owner approval)
+
+**How builds are started:** edit `engine/gecko/triggers/<linux|macos|windows>.txt` on `claude/task-003-gecko-build` and push. Nothing else starts a build.
+Never re-run a configuration that already succeeded; read the run's `*-metrics` artifact and step summary first.
 - [ ] T6 Security-update sustainability assessment + architecture verdict
 
 ## Branch & checkpoints
