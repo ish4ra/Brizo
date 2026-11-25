@@ -1,0 +1,198 @@
+# Reusable: ONE stage of the staged Windows x64 Gecko build (called by
+# gecko-build-windows.yml). Same design as the macOS stages: verified source,
+# configure, local sccache restored from the previous stage, time-budgeted
+# compile, cache handed forward, package+smoke+gate when finished.
+# Native windows-latest, Mozilla's MozillaBuild environment, the runner's
+# installed Visual Studio + Windows SDK via VC_PATH/WINDOWSSDKDIR (never
+# Mozilla's repackaged "vs" bootstrap).
+name: gecko-stage-windows
+
+on:
+  workflow_call:
+    inputs:
+      stage: { type: number, required: true }
+      restore_from: { type: string, required: false, default: "" }
+    outputs:
+      done:
+        value: ${{ jobs.stage.outputs.done }}
+
+env:
+  FIREFOX_VERSION: "161.0"
+  SCCACHE_GHA_ENABLED: "false"
+  SCCACHE_CACHE_SIZE: "40G"
+
+jobs:
+  stage:
+    runs-on: windows-latest
+    timeout-minutes: 355
+    outputs:
+      done: ${{ steps.compile.outcome == 'success' }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Canonical paths, tools, monitor
+        run: |
+          T="$(cygpath -m "$RUNNER_TEMP")"
+          for v in METRICS=metrics OUT=out SRC_ROOT=src SCCACHE_DIR=sccache MOZBUILD_STATE_PATH=.mozbuild; do
+            echo "${v%%=*}=$T/${v#*=}" >> "$GITHUB_ENV"; done
+          mkdir -p "$T/metrics" "$T/out" "$T/sccache"
+          pip install --quiet "psutil==7.0.0" "websockets==15.0.1"
+          nohup python engine/gecko/monitor.py "$T/metrics/resources.csv" "D:\\" >/dev/null 2>&1 &
+          echo $! > "$T/metrics/monitor.pid"
+          echo "stage ${{ inputs.stage }}; restore_from='${{ inputs.restore_from }}'" | tee "$T/metrics/stage.txt"
+
+      - name: Restore compiler cache from previous stage
+        if: inputs.restore_from != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.restore_from }}
+          path: ${{ runner.temp }}/sccache
+
+      - name: Install MozillaBuild (official Mozilla build environment)
+        shell: pwsh
+        run: |
+          Invoke-WebRequest -Uri "https://ftp.mozilla.org/pub/mozilla/libraries/win32/MozillaBuildSetup-Latest.exe" -OutFile "$env:RUNNER_TEMP\MozillaBuildSetup.exe"
+          (Get-FileHash "$env:RUNNER_TEMP\MozillaBuildSetup.exe" -Algorithm SHA256).Hash | Tee-Object "$env:METRICS\mozillabuild-sha256.txt"
+          Start-Process -FilePath "$env:RUNNER_TEMP\MozillaBuildSetup.exe" -ArgumentList "/S" -Wait
+          Get-Content C:\mozilla-build\VERSION -ErrorAction SilentlyContinue | Tee-Object "$env:METRICS\mozillabuild-version.txt"
+
+      - name: Locate installed Visual Studio and Windows SDK
+        shell: pwsh
+        run: |
+          $vs = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          $ver = (Get-Content "$vs\VC\Auxiliary\Build\Microsoft.VCToolsVersion.default.txt").Trim()
+          "VC_PATH=$vs\VC\Tools\MSVC\$ver" | Out-File -Append $env:GITHUB_ENV
+          "WINDOWSSDKDIR=${env:ProgramFiles(x86)}\Windows Kits\10" | Out-File -Append $env:GITHUB_ENV
+          "VS: $vs / MSVC $ver" | Tee-Object "$env:METRICS\toolchain.txt"
+
+      - name: Fetch and verify Firefox source
+        id: src
+        run: engine/gecko/step.sh "$METRICS/timings.csv" fetch_verify_unpack engine/gecko/fetch-source.sh "$FIREFOX_VERSION" "$SRC_ROOT"
+
+      - name: Set up sccache
+        uses: mozilla-actions/sccache-action@v0.0.9
+
+      - name: Install mozconfig (absolute sccache path)
+        run: |
+          S="$(cygpath -m '${{ steps.src.outputs.srcdir }}')"
+          cp engine/gecko/mozconfig.windows-x64 "$S/mozconfig"
+          echo "ac_add_options --with-ccache=$(cygpath -m "$SCCACHE_PATH")" >> "$S/mozconfig"
+          echo "SRCDIR_U=$(cygpath -u "$S")" >> "$GITHUB_ENV"; cat "$S/mozconfig"
+
+      - name: Configure (inside MozillaBuild)
+        id: configure
+        shell: cmd
+        run: |
+          set MOZILLABUILD=C:\mozilla-build\
+          C:\mozilla-build\msys2\usr\bin\bash.exe -l -c "cd \"$(cygpath -u '%GITHUB_WORKSPACE%')\" && engine/gecko/step.sh \"$(cygpath -u '%METRICS%')/timings.csv\" configure engine/gecko/win-mach.sh \"%SRCDIR_U%\" configure > \"$(cygpath -u '%METRICS%')/configure.log\" 2>&1; RC=$?; tail -n 60 \"$(cygpath -u '%METRICS%')/configure.log\"; exit $RC"
+
+      - name: Compile (inside MozillaBuild, time-budgeted)
+        id: compile
+        continue-on-error: true
+        shell: cmd
+        run: |
+          set MOZILLABUILD=C:\mozilla-build\
+          C:\mozilla-build\msys2\usr\bin\bash.exe -l -c "cd \"$(cygpath -u '%GITHUB_WORKSPACE%')\" && engine/gecko/step.sh \"$(cygpath -u '%METRICS%')/timings.csv\" compile timeout 285m engine/gecko/win-mach.sh \"%SRCDIR_U%\" build > \"$(cygpath -u '%METRICS%')/build.log\" 2>&1; RC=$?; tail -n 120 \"$(cygpath -u '%METRICS%')/build.log\"; gzip -f \"$(cygpath -u '%METRICS%')/build.log\"; echo compile exit code: $RC; exit $RC"
+
+      - name: Stop sccache and record cache size
+        if: always()
+        run: |
+          "$SCCACHE_PATH" --show-stats > "$METRICS/sccache-stats.txt" 2>&1 || true
+          "$SCCACHE_PATH" --stop-server >/dev/null 2>&1 || true
+          du -sh "$SCCACHE_DIR" | tee "$METRICS/cache-final.txt" || true
+          grep -E "requests executed|hits rate|write errors" "$METRICS/sccache-stats.txt" || true
+
+      - name: Hand compiler cache to the next stage
+        if: steps.compile.outcome != 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: sccache-windows-stage${{ inputs.stage }}
+          path: ${{ runner.temp }}/sccache
+          retention-days: 3
+          compression-level: 0
+
+      - name: Package (inside MozillaBuild)
+        id: pkg
+        if: steps.compile.outcome == 'success'
+        continue-on-error: true
+        shell: cmd
+        run: |
+          set MOZILLABUILD=C:\mozilla-build\
+          C:\mozilla-build\msys2\usr\bin\bash.exe -l -c "cd \"$(cygpath -u '%GITHUB_WORKSPACE%')\" && engine/gecko/step.sh \"$(cygpath -u '%METRICS%')/timings.csv\" package engine/gecko/win-mach.sh \"%SRCDIR_U%\" package > \"$(cygpath -u '%METRICS%')/package.log\" 2>&1; RC=$?; tail -n 60 \"$(cygpath -u '%METRICS%')/package.log\"; exit $RC"
+
+      - name: Collect package
+        id: out
+        if: steps.pkg.outcome == 'success'
+        continue-on-error: true
+        run: |
+          PKG=$(ls "$SRCDIR_U"/../obj-brizo/dist/firefox-*.zip | head -1)
+          F="brizo-gecko-experiment-${FIREFOX_VERSION}-windows-x86_64.zip"
+          cp "$PKG" "$OUT/$F"
+          (cd "$OUT" && sha256sum "$F" > SHA256SUMS.txt && cat SHA256SUMS.txt)
+          echo "pkg=$OUT/$F" >> "$GITHUB_OUTPUT"
+
+      - name: Smoke and security test (packaged build)
+        id: smoke
+        if: steps.out.outcome == 'success'
+        continue-on-error: true
+        run: |
+          mkdir -p "$RUNNER_TEMP/app" && unzip -q "${{ steps.out.outputs.pkg }}" -d "$RUNNER_TEMP/app"
+          engine/gecko/step.sh "$METRICS/timings.csv" smoke_test python engine/gecko/smoke_test.py "$RUNNER_TEMP/app/firefox/firefox.exe" "$METRICS/smoke"
+
+      - name: Classify package
+        id: label
+        if: always()
+        run: |
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import json, os
+          p = os.path.join(os.environ["METRICS"], "smoke", "smoke.json")
+          r = json.load(open(p)) if os.path.exists(p) else []
+          sec = [x for x in r if x["check"].startswith(("content_sandbox", "certificate_validation"))]
+          print("suffix=" + ("" if sec and all(x["status"] == "pass" for x in sec) else "-DIAGNOSTIC-security-unverified"))
+          PY
+
+      - name: Summarise measurements
+        if: always()
+        run: |
+          kill "$(cat "$METRICS/monitor.pid")" 2>/dev/null || true
+          python engine/gecko/write_env.py "$METRICS" "windows-latest stage ${{ inputs.stage }}" "${{ steps.src.outputs.source_sha256 }}" "${{ steps.compile.outcome }}" "${{ steps.out.outputs.pkg }}"
+          python engine/gecko/summarize.py "$METRICS"
+
+      - name: Upload metrics and logs
+        id: up_metrics
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: gecko-windows-x64-metrics-stage${{ inputs.stage }}
+          path: ${{ runner.temp }}/metrics
+          retention-days: 30
+
+      - name: Upload experimental package
+        id: up_pkg
+        if: steps.out.outcome == 'success'
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: brizo-gecko-experiment-${{ env.FIREFOX_VERSION }}-windows-x86_64${{ steps.label.outputs.suffix }}
+          path: ${{ runner.temp }}/out
+          retention-days: 30
+          compression-level: 0
+
+      - name: Acceptance gate (only when this stage finished the build)
+        if: always() && steps.compile.outcome == 'success'
+        env:
+          OUTCOME_SOURCE: ${{ steps.src.outcome }}
+          OUTCOME_CONFIGURE: ${{ steps.configure.outcome }}
+          OUTCOME_COMPILE: ${{ steps.compile.outcome }}
+          OUTCOME_PACKAGE: ${{ steps.out.outcome }}
+          OUTCOME_SMOKE: ${{ steps.smoke.outcome }}
+          OUTCOME_METRICS_UPLOAD: ${{ steps.up_metrics.outcome }}
+          OUTCOME_PACKAGE_UPLOAD: ${{ steps.up_pkg.outcome }}
+        run: python engine/gecko/acceptance.py "$METRICS" windows-x64

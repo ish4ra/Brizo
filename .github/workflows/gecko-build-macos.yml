@@ -1,8 +1,9 @@
-# Task 003 — Gecko build experiment, macOS Apple Silicon (arm64).
-# EXPERIMENTAL feasibility build of unmodified, unbranded Firefox source.
-# Native build on a standard GitHub-hosted macOS runner (Apple hardware), free
-# for public repositories, using Apple's Xcode SDK installed on that runner.
-# Firefox 161 requires macOS SDK >= 26.5; macos-latest ships Xcode 26.6.
+# Task 003: Gecko build experiment, macOS Apple Silicon (attempt 2: staged).
+# Attempt 1 (run 45581403273) timed out at ~55% after 290 min (cold build
+# estimated at ~8.5 h > the 6 h job limit), so the build is split into up to
+# three chained free macos-latest jobs that hand a local sccache directory
+# forward as an artifact. Native Apple hardware with Xcode 26.6's own SDK; no
+# repackaged SDK, no paid runners. Starts only via engine/gecko/triggers/macos.txt.
 name: Gecko build experiment (macOS arm64)
 
 on:
@@ -18,124 +19,32 @@ concurrency:
   group: gecko-build-macos
   cancel-in-progress: false
 
-env:
-  FIREFOX_VERSION: "161.0"
-  SCCACHE_GHA_ENABLED: "true"
-  XCODE_APP: /Applications/Xcode_26.6.app
-
 jobs:
-  build:
-    runs-on: macos-latest
-    timeout-minutes: 355
+  stage1:
+    uses: ./.github/workflows/gecko-stage-macos.yml
+    with: { stage: 1 }
+  stage2:
+    needs: stage1
+    if: always() && needs.stage1.outputs.done != 'true' && needs.stage1.result != 'cancelled'
+    uses: ./.github/workflows/gecko-stage-macos.yml
+    with: { stage: 2, restore_from: sccache-macos-stage1 }
+  stage3:
+    needs: [stage1, stage2]
+    if: always() && needs.stage1.outputs.done != 'true' && needs.stage2.outputs.done != 'true' && needs.stage2.result != 'cancelled' && needs.stage2.result != 'skipped'
+    uses: ./.github/workflows/gecko-stage-macos.yml
+    with: { stage: 3, restore_from: sccache-macos-stage2 }
+  result:
+    needs: [stage1, stage2, stage3]
+    if: always()
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Paths, tools and resource monitor
+      - name: Overall result (fails unless some stage finished the build)
         run: |
-          echo "METRICS=$RUNNER_TEMP/metrics" >> "$GITHUB_ENV"
-          echo "MOZBUILD_STATE_PATH=$RUNNER_TEMP/.mozbuild" >> "$GITHUB_ENV"
-          mkdir -p "$RUNNER_TEMP/metrics"
-          pip install --quiet "psutil==7.0.0" "websockets==15.0.1"
-          nohup python engine/gecko/monitor.py "$RUNNER_TEMP/metrics/resources.csv" / >/dev/null 2>&1 &
-          echo $! > "$RUNNER_TEMP/metrics/monitor.pid"
-          sysctl -n hw.ncpu hw.memsize; df -h / | tee "$RUNNER_TEMP/metrics/disk-initial.txt"
-          command -v gpg || brew install gnupg
-
-      - name: Select Xcode and record SDK
-        id: sdk
-        run: |
-          sudo xcode-select -s "$XCODE_APP"
-          xcodebuild -version | tee "$METRICS/xcode.txt"
-          SDK="$(xcrun --sdk macosx --show-sdk-path)"; VER="$(xcrun --sdk macosx --show-sdk-version)"
-          echo "sdk=$SDK" >> "$GITHUB_OUTPUT"; echo "macOS SDK $VER at $SDK" | tee -a "$METRICS/xcode.txt"
-
-      - name: Fetch and verify Firefox source
-        id: src
-        run: engine/gecko/step.sh "$METRICS/timings.csv" fetch_verify_unpack engine/gecko/fetch-source.sh "$FIREFOX_VERSION" "$RUNNER_TEMP/src"
-
-      - name: Set up sccache
-        uses: mozilla-actions/sccache-action@v0.0.9
-
-      - name: Configure (bootstraps pinned upstream toolchains; Apple SDK from Xcode)
-        working-directory: ${{ steps.src.outputs.srcdir }}
-        run: |
-          cp "$GITHUB_WORKSPACE/engine/gecko/mozconfig.macos-arm64" mozconfig
-          echo "ac_add_options --with-macos-sdk=${{ steps.sdk.outputs.sdk }}" >> mozconfig
-          export MOZCONFIG="$PWD/mozconfig"
-          "$GITHUB_WORKSPACE/engine/gecko/step.sh" "$METRICS/timings.csv" configure ./mach --no-interactive configure > "$METRICS/configure.log" 2>&1
-          RC=$?; tail -n 60 "$METRICS/configure.log"; exit $RC
-
-      - name: Compile
-        id: compile
-        continue-on-error: true
-        working-directory: ${{ steps.src.outputs.srcdir }}
-        run: |
-          export MOZCONFIG="$PWD/mozconfig"
-          set +e
-          "$GITHUB_WORKSPACE/engine/gecko/step.sh" "$METRICS/timings.csv" compile \
-            /usr/bin/env perl -e 'alarm 17400; exec @ARGV' ./mach --no-interactive build > "$METRICS/build.log" 2>&1
-          RC=$?
-          tail -n 150 "$METRICS/build.log"
-          gzip -k "$METRICS/build.log" && rm "$METRICS/build.log"
-          echo "compile exit code: $RC (142 = hit the 290 min alarm)"
-          exit $RC
-
-      - name: Package
-        id: pkg
-        if: steps.compile.outcome == 'success'
-        working-directory: ${{ steps.src.outputs.srcdir }}
-        run: |
-          export MOZCONFIG="$PWD/mozconfig"
-          "$GITHUB_WORKSPACE/engine/gecko/step.sh" "$METRICS/timings.csv" package ./mach --no-interactive package > "$METRICS/package.log" 2>&1 || { tail -n 80 "$METRICS/package.log"; exit 1; }
-          PKG=$(ls ../obj-brizo/dist/*.dmg | head -1)
-          mkdir -p "$RUNNER_TEMP/out"
-          OUT="$RUNNER_TEMP/out/brizo-gecko-experiment-${FIREFOX_VERSION}-macos-arm64.dmg"
-          cp "$PKG" "$OUT"
-          (cd "$RUNNER_TEMP/out" && shasum -a 256 "$(basename "$OUT")" > SHA256SUMS.txt && cat SHA256SUMS.txt)
-          echo "pkg=$OUT" >> "$GITHUB_OUTPUT"
-
-      - name: Smoke test (headless, packaged app, arm64)
-        if: steps.pkg.outcome == 'success'
-        continue-on-error: true
-        run: |
-          MNT=$(mktemp -d)
-          hdiutil attach -nobrowse -readonly -mountpoint "$MNT" "${{ steps.pkg.outputs.pkg }}"
-          APP=$(ls -d "$MNT"/*.app | head -1)
-          cp -R "$APP" "$RUNNER_TEMP/BrizoExperiment.app"
-          hdiutil detach "$MNT"
-          codesign -dv --verbose=2 "$RUNNER_TEMP/BrizoExperiment.app" > "$METRICS/codesign.txt" 2>&1 || true
-          spctl -a -vv "$RUNNER_TEMP/BrizoExperiment.app" > "$METRICS/gatekeeper-assessment.txt" 2>&1 || true
-          file "$RUNNER_TEMP/BrizoExperiment.app/Contents/MacOS/firefox" | tee "$METRICS/arch.txt"
-          cat "$METRICS/codesign.txt" "$METRICS/gatekeeper-assessment.txt"
-          engine/gecko/step.sh "$METRICS/timings.csv" smoke_test python engine/gecko/smoke_test.py "$RUNNER_TEMP/BrizoExperiment.app/Contents/MacOS/firefox" "$METRICS/smoke"
-
-      - name: Summarise measurements
-        if: always()
-        run: |
-          kill "$(cat "$METRICS/monitor.pid")" || true
-          sccache --show-stats > "$METRICS/sccache-stats.txt" 2>&1 || true
-          du -sh "${{ steps.src.outputs.srcdir }}/../obj-brizo" "$MOZBUILD_STATE_PATH" 2>/dev/null | tee "$METRICS/dir-sizes.txt" || true
-          df -h / | tee "$METRICS/disk-final.txt"
-          python engine/gecko/write_env.py "$METRICS" macos-latest "${{ steps.src.outputs.source_sha256 }}" "${{ steps.compile.outcome }}" "${{ steps.pkg.outputs.pkg }}"
-          python engine/gecko/summarize.py "$METRICS"
-
-      - name: Upload metrics and logs
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: gecko-macos-arm64-metrics
-          path: ${{ env.METRICS }}
-          retention-days: 30
-
-      - name: Upload experimental build
-        if: steps.pkg.outcome == 'success'
-        uses: actions/upload-artifact@v4
-        with:
-          name: brizo-gecko-experiment-${{ env.FIREFOX_VERSION }}-macos-arm64
-          path: ${{ runner.temp }}/out
-          retention-days: 30
-          compression-level: 0
+          echo "stage1 done=${{ needs.stage1.outputs.done }} (${{ needs.stage1.result }})"
+          echo "stage2 done=${{ needs.stage2.outputs.done }} (${{ needs.stage2.result }})"
+          echo "stage3 done=${{ needs.stage3.outputs.done }} (${{ needs.stage3.result }})"
+          if [ "${{ needs.stage1.outputs.done }}${{ needs.stage2.outputs.done }}${{ needs.stage3.outputs.done }}" = "" ] || ! echo "${{ needs.stage1.outputs.done }}${{ needs.stage2.outputs.done }}${{ needs.stage3.outputs.done }}" | grep -q true; then
+            echo "::error::No stage finished compiling Firefox"; exit 1; fi
+          for r in "${{ needs.stage1.result }}" "${{ needs.stage2.result }}" "${{ needs.stage3.result }}"; do
+            [ "$r" = "failure" ] && { echo "::error::A stage failed its acceptance gate"; exit 1; }; done
+          echo "Build finished; see the finishing stage's acceptance gate."

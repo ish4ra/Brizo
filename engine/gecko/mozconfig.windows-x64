@@ -4,7 +4,10 @@
 # from bootstrapping Mozilla's repackaged "vs" toolchain.
 ac_add_options --enable-application=browser
 ac_add_options --enable-bootstrap
-ac_add_options --with-ccache=sccache
+# sccache path is appended by the workflow (MozillaBuild login shell may reset PATH)
 ac_add_options --disable-tests
 # Unofficial branding (no --enable-official-branding), per Mozilla trademark policy.
 mk_add_options MOZ_OBJDIR=@TOPSRCDIR@/../obj-brizo
+# Experiment-only speed/memory saving: no debug symbols (no PDB-based crash
+# symbolication). No effect on runtime security features.
+ac_add_options --disable-debug-symbols
