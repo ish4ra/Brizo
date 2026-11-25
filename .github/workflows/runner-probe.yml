@@ -1,0 +1,37 @@
+# Task 002: bounded, zero-cost probe of GitHub-hosted runner capacity.
+# Standard GitHub-hosted runners are free for public repositories.
+# Downloads no source trees; upstream sizes come from HTTP HEAD only.
+name: Runner probe (research)
+
+on:
+  push:
+    branches: ["claude/task-002-engine-feasibility"]
+    paths: [".github/workflows/runner-probe.yml", "research/probe/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-latest, ubuntu-24.04-arm, macos-latest, macos-15-intel, windows-latest, windows-11-arm]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 15
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probe
+        shell: bash
+        env:
+          PROBE_LABEL: ${{ matrix.runner }}
+          PROBE_CLEANUP: ${{ startsWith(matrix.runner, 'ubuntu') && '1' || '0' }}
+          PROBE_SOURCES: ${{ matrix.runner == 'ubuntu-latest' && '1' || '0' }}
+        run: python3 research/probe/probe.py || python research/probe/probe.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: probe-${{ matrix.runner }}
+          path: probe-*.json
+          retention-days: 30
