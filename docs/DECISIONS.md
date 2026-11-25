@@ -47,3 +47,25 @@ No merges or releases without owner approval.
 
 ## D-009 · 2026-11-24 · Pending: Browser foundation
 Not selected. See TECHNICAL_RESEARCH_PLAN.md (Phase 1).
+
+## D-010 · 2026-11-25 · Accepted: Sailing-logo hero stays private until rights are cleared
+The animated hero with the exact sailboat mark (boat left, type block moved
+right, surge/bob/rock motion, parallax waves, wake) is built by
+`scripts/brand/build-private-hero.mjs` from the private master into the
+git-ignored `branding-private/hero-v2/`. The public README keeps the
+source-independent Task 001 hero. When the owner confirms usage rights, the
+switch is one reviewed change (pass the boat renderer to `hero()`), and the
+leak check in `validate.mjs` is updated deliberately, never bypassed.
+No "distinct" substitute boat was published, so no second boat identity exists.
+
+## D-011 · 2026-11-25 · Accepted: Reduced motion via `<picture>` sources
+Measured in Chromium: `@media (prefers-reduced-motion)` inside an SVG loaded by
+`<img>` did not stop its CSS animation (inline SVG did). Every animated README
+`<picture>` therefore lists reduced-motion `<source>`s that serve the static
+PNG fallbacks. `validate.mjs` enforces this. The artwork is unchanged.
+
+## D-012 · 2026-11-25 · Accepted: README appearance control = settings link, not a switch
+READMEs cannot run JavaScript or change the viewer's GitHub theme. The hero has
+a compact sun/moon note with an accurately labelled link to
+`https://github.com/settings/appearance`. A real Sun/Moon toggle is specified
+for the future website (`docs/website/`), but is not deployed.

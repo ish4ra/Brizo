@@ -1,9 +1,13 @@
 <div align="center">
 
 <picture>
+  <source media="(prefers-reduced-motion: reduce) and (prefers-color-scheme: dark)" srcset="assets/readme/static/hero-dark.png">
+  <source media="(prefers-reduced-motion: reduce)" srcset="assets/readme/static/hero-light.png">
   <source media="(prefers-color-scheme: dark)" srcset="assets/readme/hero-dark.svg">
   <img alt="Brizo — Fast. Private. Lightweight. Open. Early development: architecture and foundation." src="assets/readme/hero-light.svg" width="100%">
 </picture>
+
+<sub><a href="https://github.com/settings/appearance" title="Opens GitHub's appearance settings (sign-in required). README content cannot change your theme."><img src="assets/readme/icon-sun.svg" width="12" height="12" alt="Light"> <img src="assets/readme/icon-moon.svg" width="12" height="12" alt="Dark"></a> Artwork adapts to light and dark mode automatically · <a href="https://github.com/settings/appearance">GitHub appearance settings</a></sub>
 
 <br>
 
@@ -29,6 +33,8 @@
 > feature is **planned**, not implemented.
 
 <picture>
+  <source media="(prefers-reduced-motion: reduce) and (prefers-color-scheme: dark)" srcset="assets/readme/static/divider-dark.png">
+  <source media="(prefers-reduced-motion: reduce)" srcset="assets/readme/static/divider-light.png">
   <source media="(prefers-color-scheme: dark)" srcset="assets/readme/divider-dark.svg">
   <img alt="" src="assets/readme/divider-light.svg" width="100%">
 </picture>
@@ -52,6 +58,8 @@ Read the full [project vision](docs/PROJECT_VISION.md).
 ## Planned core capabilities
 
 <picture>
+  <source media="(prefers-reduced-motion: reduce) and (prefers-color-scheme: dark)" srcset="assets/readme/static/pillars-dark.png">
+  <source media="(prefers-reduced-motion: reduce)" srcset="assets/readme/static/pillars-light.png">
   <source media="(prefers-color-scheme: dark)" srcset="assets/readme/pillars-dark.svg">
   <img alt="Four planned capabilities: dual extension ecosystem, built-in privacy engine, integrated media grabber, lightweight by design." src="assets/readme/pillars-light.svg" width="100%">
 </picture>
@@ -115,6 +123,8 @@ lightweight philosophy.
 Full detail is in [docs/FEATURE_REQUIREMENTS.md](docs/FEATURE_REQUIREMENTS.md).
 
 <picture>
+  <source media="(prefers-reduced-motion: reduce) and (prefers-color-scheme: dark)" srcset="assets/readme/static/divider-dark.png">
+  <source media="(prefers-reduced-motion: reduce)" srcset="assets/readme/static/divider-light.png">
   <source media="(prefers-color-scheme: dark)" srcset="assets/readme/divider-dark.svg">
   <img alt="" src="assets/readme/divider-light.svg" width="100%">
 </picture>
@@ -135,6 +145,8 @@ Full detail is in [docs/FEATURE_REQUIREMENTS.md](docs/FEATURE_REQUIREMENTS.md).
 ## Technical roadmap
 
 <picture>
+  <source media="(prefers-reduced-motion: reduce) and (prefers-color-scheme: dark)" srcset="assets/readme/static/roadmap-dark.png">
+  <source media="(prefers-reduced-motion: reduce)" srcset="assets/readme/static/roadmap-light.png">
   <source media="(prefers-color-scheme: dark)" srcset="assets/readme/roadmap-dark.svg">
   <img alt="Roadmap phases 0 to 7: foundation, engine feasibility, free CI build pipeline, core browsing prototype, privacy engine, extension ecosystem, media grabber, public beta. Currently phase 0." src="assets/readme/roadmap-light.svg" width="100%">
 </picture>
@@ -185,6 +197,8 @@ Initial testing priority: **1.** macOS Apple Silicon → **2.** Windows x64 → 
   validation stay on.
 
 <picture>
+  <source media="(prefers-reduced-motion: reduce) and (prefers-color-scheme: dark)" srcset="assets/readme/static/divider-dark.png">
+  <source media="(prefers-reduced-motion: reduce)" srcset="assets/readme/static/divider-light.png">
   <source media="(prefers-color-scheme: dark)" srcset="assets/readme/divider-dark.svg">
   <img alt="" src="assets/readme/divider-light.svg" width="100%">
 </picture>

@@ -85,6 +85,16 @@ ok(`${mds.length} Markdown files, ${links} local links/anchors resolved`);
 const readme = fs.readFileSync(path.join(REPO, 'README.md'), 'utf8');
 for (const bad of [/releases\/latest/i, /img\.shields\.io\/github\/(downloads|stars)/i, /\/actions\/workflows\/.*badge/i]) if (bad.test(readme)) fail(`README: forbidden pattern ${bad}`);
 if (!readme.includes('Early Development')) fail('README: status "Early Development" missing');
+// Animated SVGs inside <img> may ignore prefers-reduced-motion (verified in
+// Chromium, Task 002), so every README <picture> showing an animated SVG must
+// offer a static reduced-motion source first.
+for (const pic of readme.match(/<picture>[\s\S]*?<\/picture>/g) ?? []) {
+  const svgsIn = [...pic.matchAll(/(?:src|srcset)="([^"]+\.svg)"/g)].map((m) => m[1]);
+  const animated = svgsIn.some((f) => fs.existsSync(path.join(REPO, f)) && fs.readFileSync(path.join(REPO, f), 'utf8').includes('@keyframes'));
+  if (animated && !/media="\(prefers-reduced-motion: reduce\)/.test(pic)) fail(`README: animated <picture> without reduced-motion fallback (${svgsIn[0]})`);
+}
+// The appearance link must not be presented as a theme switch.
+if (/theme (switch|toggle)/i.test(readme.split('## Why Brizo')[0])) fail('README: hero area must not claim a theme switch');
 ok('README honesty checks passed');
 
 // 6. Secrets scan.

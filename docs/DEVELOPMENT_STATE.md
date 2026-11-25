@@ -11,9 +11,9 @@ _Last updated: 2026-11-25 · Task 002 in progress_
 Owner approved proceeding (2026-11-25). Not approved: merging PR #1, publishing logo assets, releases, engine selection, browser implementation.
 
 Plan / progress (update as you go):
-- [ ] A1 Animated exact-logo hero: PRIVATE (branding-private/), separate versioned package `brizo-hero-review-v2.zip`
-- [ ] A2 Public README hero: keep current source-independent hero unless rights are cleared; refactor generator so the logo version is a flag flip
-- [ ] A3 Compact appearance control (sun/moon + official GitHub appearance settings link, labelled honestly) + website theme-toggle design doc
+- [x] A1 Animated exact-logo hero: PRIVATE (branding-private/), separate versioned package `brizo-hero-review-v2.zip`
+- [x] A2 Public README hero: keep current source-independent hero unless rights are cleared; refactor generator so the logo version is a flag flip
+- [x] A3 Compact appearance control (sun/moon + official GitHub appearance settings link, labelled honestly) + website theme-toggle design doc
 - [ ] A4 Checkpoint on `claude/great-gates-umqsa8` (PR #1), CI green
 - [ ] B  Feasibility research on dependent branch `claude/task-002-engine-feasibility` (PR → `claude/great-gates-umqsa8`)
 

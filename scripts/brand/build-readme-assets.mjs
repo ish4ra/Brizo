@@ -14,11 +14,12 @@
 //   - honours prefers-reduced-motion inside the SVG -> animations are disabled.
 // Static PNG fallbacks (first frame) are rendered into assets/readme/static/.
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { PALETTE, REPO, renderPNG, textPath, write, fmt } from './lib.mjs';
 
 const OUT = path.join(REPO, 'assets/readme');
 
-const THEMES = {
+export const THEMES = {
   light: {
     bg: PALETTE.bgLight, card: PALETTE.white, border: PALETTE.border, text: PALETTE.text,
     muted: '#475569', accent: PALETTE.primary, accentText: PALETTE.deepOcean, faint: 0.35, track: '#C7D9EE',
@@ -92,7 +93,15 @@ ${body}
 // --------------------------------------------------------------------------
 // Hero banner
 // --------------------------------------------------------------------------
-function hero(theme) {
+/**
+ * Hero banner. Without `boat` this is the public, source-independent hero.
+ * With `boat` ({ width(h), render({x, y, h}) }) it becomes the sailing-logo
+ * hero: the boat sails on the left and the type block moves right. The boat
+ * geometry is injected at build time from the PRIVATE master (see
+ * build-private-hero.mjs); this file never contains logo geometry.
+ */
+export function hero(theme, { boat } = {}) {
+  if (boat) return sailingHero(theme, boat);
   const T = THEMES[theme];
   const W = 1280, H = 460;
   const clip = `<clipPath id="frame"><rect x="1" y="1" width="${W - 2}" height="${H - 2}" rx="28"/></clipPath>`;
@@ -130,6 +139,82 @@ ${tag}
 ${status}`, {
     title: 'Brizo — Fast. Private. Lightweight. Open.',
     desc: 'Brizo browser banner: wordmark and tagline over gently moving ocean waves and wind lines. Status: early development, architecture and foundation.',
+  });
+}
+
+// --------------------------------------------------------------------------
+// Sailing hero (used only when a boat renderer is supplied)
+// --------------------------------------------------------------------------
+const SAIL_CSS = `
+.surge{animation:surge 16s ease-in-out infinite alternate}
+@keyframes surge{from{transform:translateX(-10px)}to{transform:translateX(18px)}}
+.bobbing{animation:bobbing 3.4s ease-in-out infinite alternate}
+@keyframes bobbing{from{transform:translateY(-2px)}to{transform:translateY(4px)}}
+.rock{animation:rock 5.2s ease-in-out infinite alternate}
+@keyframes rock{from{transform:rotate(-1.6deg)}to{transform:rotate(1.2deg)}}
+.wake{stroke-dasharray:22 9 9 12;animation:wake 1.6s linear infinite}
+@keyframes wake{to{stroke-dashoffset:-52}}
+.foam{animation:breathe 3.4s ease-in-out infinite alternate}
+`;
+
+function sailingHero(theme, boat) {
+  const T = THEMES[theme];
+  const W = 1280, H = 460;
+  const clip = `<clipPath id="frame"><rect x="1" y="1" width="${W - 2}" height="${H - 2}" rx="28"/></clipPath>`;
+  // Parallax: far layer slowest, near layer fastest. All loops are exact wave periods (seamless).
+  const bands = [
+    { y: 372, amp: 10, period: 640, c: PALETTE.lightSail, o: T.faint + 0.1, dur: 30 },
+    { y: 392, amp: 12, period: 800, c: PALETTE.primary, o: theme === 'light' ? 0.55 : 0.6, dur: 20 },
+    { y: 414, amp: 9, period: 560, c: PALETTE.deepOcean, o: 1, dur: 12 },
+  ].map((b) => `<g class="drift" style="--p:-${b.period}px;animation-duration:${b.dur}s"><path fill="${b.c}" fill-opacity="${b.o}" d="${waveBand({ y: b.y, amp: b.amp, period: b.period, width: W + b.period, bottom: H })}"/></g>`).join('\n');
+
+  // Wind blows from behind the boat (left -> right). The lines stay clear of
+  // the type block so the title, tagline and status are always legible.
+  const winds = [
+    { d: 'M-40 60 C 240 44, 520 76, 800 54 S 1120 40, 1320 62', l: 260, delay: 0 },
+    { d: 'M-40 150 C 90 138, 210 164, 340 150 S 450 140, 520 148', l: 150, delay: 2.6 },
+    { d: 'M-40 214 C 70 204, 190 226, 300 212 S 420 204, 500 212', l: 130, delay: 5.2 },
+  ].map((w) => `<path class="wind" style="--l:${w.l};animation-delay:${w.delay}s" d="${w.d}" fill="none" stroke="${PALETTE.lightSail}" stroke-width="2" stroke-linecap="round"/>`).join('\n');
+
+  // Boat placement: bbox height h, hull bottom sits on the middle wave layer.
+  const h = 214, bw = boat.width(h), bx = 136, bottom = 395, by = bottom - h;
+  const pivotX = bx + bw * 0.62, pivotY = bottom; // rock around the hull's waterline centre
+  const stern = bx + bw * 0.3; // where the hull meets the water at the back
+  const wakeGrad = `<linearGradient id="wakeFade" gradientUnits="userSpaceOnUse" x1="${fmt(stern - 170)}" y1="0" x2="${fmt(stern)}" y2="0"><stop offset="0" stop-color="#FFFFFF" stop-opacity="0"/><stop offset="1" stop-color="#FFFFFF" stop-opacity=".85"/></linearGradient>`;
+  const wake = [
+    `M${fmt(stern)} ${bottom - 1} C ${fmt(stern - 50)} ${bottom + 1}, ${fmt(stern - 110)} ${bottom + 7}, ${fmt(stern - 170)} ${bottom + 5}`,
+    `M${fmt(stern + 10)} ${bottom + 6} C ${fmt(stern - 40)} ${bottom + 10}, ${fmt(stern - 90)} ${bottom + 15}, ${fmt(stern - 135)} ${bottom + 14}`,
+  ].map((d, i) => `<path class="wake" style="animation-delay:-${i * 0.6}s" d="${d}" fill="none" stroke="url(#wakeFade)" stroke-width="${i ? 2 : 2.5}" stroke-linecap="round"/>`).join('');
+  const foam = `<path class="foam" d="M${fmt(stern + 2)} ${bottom + 1} Q ${fmt(bx + bw * 0.66)} ${bottom + 6} ${fmt(bx + bw * 1.02)} ${bottom - 1}" fill="none" stroke="#FFFFFF" stroke-opacity=".7" stroke-width="2" stroke-linecap="round"/>`;
+
+  // Navigation course from the bow to a waypoint on the right.
+  const course = `<path class="march" d="M${fmt(bx + bw + 40)} 352 C 520 332, 700 356, 880 344 S 1080 328, 1170 338" fill="none" stroke="${T.accent}" stroke-opacity=".5" stroke-width="2" stroke-dasharray="2 10" stroke-linecap="round"/>
+<circle cx="1170" cy="338" r="6" fill="${T.accent}"/><circle class="pulse" cx="1170" cy="338" r="6" fill="none" stroke="${T.accent}" stroke-width="2"/>`;
+
+  const cx = 770; // type block moved right of centre
+  const title = text('Brizo', { x: cx, y: 196, size: 132, weight: 700, fill: T.text, anchor: 'middle', tracking: -3 }).el;
+  const tag = text('Fast. Private. Lightweight. Open.', { x: cx, y: 250, size: 30, weight: 500, fill: T.muted, anchor: 'middle' }).el;
+  const status = pill('EARLY DEVELOPMENT  ·  ARCHITECTURE & FOUNDATION', { x: cx, y: 280, theme, anchor: 'middle', size: 15 });
+
+  const css = `${SAIL_CSS}.rock{transform-origin:${fmt(pivotX)}px ${fmt(pivotY)}px}`;
+  return svgDoc(W, H, css, `<defs>${clip}${wakeGrad}</defs>
+<g clip-path="url(#frame)">
+<rect width="${W}" height="${H}" fill="${T.bg}"/>
+${winds}
+${course}
+${bands}
+<g class="surge">
+${wake}
+${foam}
+<g class="bobbing"><g class="rock">${boat.render({ x: bx, y: by, h })}</g></g>
+</g>
+</g>
+<rect x="1" y="1" width="${W - 2}" height="${H - 2}" rx="28" fill="none" stroke="${T.border}" stroke-width="2"/>
+${title}
+${tag}
+${status}`, {
+    title: 'Brizo — Fast. Private. Lightweight. Open.',
+    desc: 'Brizo browser banner: the Brizo sailboat sails across gently moving ocean waves beside the wordmark and tagline. Status: early development, architecture and foundation.',
   });
 }
 
@@ -273,6 +358,31 @@ function badge([label, value, bg, fg]) {
 }
 
 // --------------------------------------------------------------------------
+// Appearance icons — 16 px sun and moon for the compact appearance note.
+// One colour (Primary Blue) reads on both GitHub themes (3.7:1 / 4.7:1, above
+// the 3:1 WCAG non-text minimum).
+// --------------------------------------------------------------------------
+const ICONS = {
+  sun: (c) => {
+    const rays = Array.from({ length: 8 }, (_, i) => {
+      const a = (i * Math.PI) / 4, r1 = 5.4, r2 = 7.2;
+      return `M${fmt(8 + r1 * Math.cos(a))} ${fmt(8 + r1 * Math.sin(a))}L${fmt(8 + r2 * Math.cos(a))} ${fmt(8 + r2 * Math.sin(a))}`;
+    }).join('');
+    return `<circle cx="8" cy="8" r="3.3" fill="${c}"/><path d="${rays}" stroke="${c}" stroke-width="1.5" stroke-linecap="round"/>`;
+  },
+  moon: (c) => `<path fill="${c}" d="M10.9 1.3A6.8 6.8 0 1 0 14.7 11 5.6 5.6 0 0 1 10.9 1.3Z"/>`,
+};
+function icon(name) {
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16" role="img" aria-label="${name}">
+<!-- Generated by scripts/brand/build-readme-assets.mjs — do not edit by hand. -->
+<title>${name}</title>
+${ICONS[name](PALETTE.primary)}
+</svg>
+`;
+}
+
+// --------------------------------------------------------------------------
+export function main() {
 const builders = { hero, divider, pillars, roadmap };
 let n = 0;
 for (const [name, fn] of Object.entries(builders)) {
@@ -291,4 +401,13 @@ for (const [k, def] of Object.entries(BADGES)) {
   write(path.join(OUT, 'static', `badge-${k}.png`), renderPNG(svg, W).png);
   n += 2;
 }
+for (const k of Object.keys(ICONS)) {
+  const svg = icon(k);
+  write(path.join(OUT, `icon-${k}.svg`), svg);
+  write(path.join(OUT, 'static', `icon-${k}.png`), renderPNG(svg, 16).png);
+  n += 2;
+}
 console.log(`Wrote ${n} README assets to ${path.relative(REPO, OUT)}`);
+}
+
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main();

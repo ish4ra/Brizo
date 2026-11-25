@@ -6,6 +6,17 @@ releases yet, so there are no version numbers.
 
 ## [Unreleased]
 
+### Added — Task 002 (part A): hero refinement & appearance
+- Sailing-logo hero mode in `build-readme-assets.mjs` and a private build script
+  (`build-private-hero.mjs`); output stays in git-ignored `branding-private/`.
+- Compact sun/moon appearance note under the README hero, linking to GitHub
+  appearance settings (labelled as a link, not a switch).
+- Reference website Sun/Moon theme toggle and behaviour test (`docs/website/`).
+
+### Fixed
+- README animations now honour reduced motion through `<picture>` sources that
+  serve static PNGs (SVG-internal media queries were ignored inside `<img>`).
+
 ### Added — Task 001: project foundation
 - Project documentation: vision, feature requirements, roadmap, decision log,
   technical research plan, development state tracker.

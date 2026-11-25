@@ -15,7 +15,9 @@ npm run validate       # checks SVG parsing, palette, PNG sizes/alpha, Markdown 
 | `lib.mjs` | Palette, Inter text outlining, resvg rendering, ICO/ICNS/BMP encoders, PNG decoder |
 | `build-readme-assets.mjs` | Animated hero, divider, capability cards and roadmap (light/dark) |
 | `build-brand-assets.mjs` | Logo variants, lockups, PNG ladder (16–1024), Windows ICO, macOS ICNS + iconset, Linux hicolor, favicons, toolbar icons, GitHub social preview, NSIS/DMG installer art |
+| `build-private-hero.mjs` | PRIVATE animated sailing-logo hero → `branding-private/hero-<version>/` (needs the master) |
 | `validate.mjs` | Repository validation used by CI |
+| `test-theme-toggle.cjs` | Behaviour test for `docs/website/theme-toggle-reference.html` (needs Playwright) |
 
 ## Logo master (private)
 
