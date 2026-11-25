@@ -7,7 +7,9 @@ name: Gecko build experiment (Linux x64)
 on:
   push:
     branches: ["claude/task-003-gecko-build"]
-    paths: [".github/workflows/gecko-build-linux.yml", "engine/gecko/**"]
+    # Start (or re-run) only by touching the trigger file, so edits to shared
+    # scripts never queue an accidental multi-hour build.
+    paths: ["engine/gecko/triggers/linux.txt"]
   workflow_dispatch:
 
 permissions:

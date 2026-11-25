@@ -178,7 +178,8 @@ except subprocess.TimeoutExpired:
 try:
     appdir = os.path.dirname(os.path.realpath(BIN))
     names = set()
-    for omni in [os.path.join(appdir, "omni.ja"), os.path.join(appdir, "browser", "omni.ja")]:
+    cands = [appdir, os.path.join(appdir, "..", "Resources")]  # Linux layout, macOS .app layout
+    for omni in [os.path.join(d, *p) for d in cands for p in (["omni.ja"], ["browser", "omni.ja"])]:
         if os.path.exists(omni):
             with zipfile.ZipFile(omni) as z:
                 names.update(z.namelist())
