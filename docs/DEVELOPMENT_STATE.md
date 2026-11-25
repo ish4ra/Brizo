@@ -16,8 +16,8 @@ Phases (update as you go):
 - [ ] T1 Gecko Linux x64 experiment: branch `claude/task-003-gecko-build`, workflow `gecko-build-linux.yml`, Firefox **161.0** (`FIREFOX_161_0_RELEASE`)
   - Run 1: https://github.com/ish4ra/Brizo/actions/runs/45580332174 (commit `e504837`, started 2026-11-25 08:53 UTC). **If this session ends: check this run's result before re-running anything.**
 - [x] T2 Logo provenance check: rights NOT established (no metadata or authorship record; only a Google/Skia ICC profile). Name: a reported live BRIZO Class 9 registration by Delta Faucet Co. (unverified at USPTO). Decision: the public hero uses a distinct temporary motif
-- [ ] T3 README hero update on PR #1 branch + live GitHub render check
-- [ ] T4 Merge PR #1 → main (merge commit); retarget PR #2 → main; merge PR #2
+- [x] T3 Public hero = V2 layout and animation with a temporary distinct sloop motif (`e809bd7`); live GitHub render verified (4 theme × motion combos, 0 broken images)
+- [x] T4 PR #1 merged → `main` `eae736c`; PR #2 retargeted, `main` merged in (`66ffefd`), merged → `main` **`5d020fc`** (merge commits, history preserved, original branches kept)
 - [ ] T5 Platform builds: macOS arm64, then Windows x64 (incremental, after Linux evidence)
 - [ ] T6 Security-update sustainability assessment + architecture verdict
 
