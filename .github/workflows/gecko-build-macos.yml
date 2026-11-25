@@ -1,0 +1,50 @@
+# Task 003: Gecko build experiment, macOS Apple Silicon (attempt 2: staged).
+# Attempt 1 (run 45581403273) timed out at ~55% after 290 min (cold build
+# estimated at ~8.5 h > the 6 h job limit), so the build is split into up to
+# three chained free macos-latest jobs that hand a local sccache directory
+# forward as an artifact. Native Apple hardware with Xcode 26.6's own SDK; no
+# repackaged SDK, no paid runners. Starts only via engine/gecko/triggers/macos.txt.
+name: Gecko build experiment (macOS arm64)
+
+on:
+  push:
+    branches: ["claude/task-003-gecko-build"]
+    paths: ["engine/gecko/triggers/macos.txt"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gecko-build-macos
+  cancel-in-progress: false
+
+jobs:
+  stage1:
+    uses: ./.github/workflows/gecko-stage-macos.yml
+    with: { stage: 1 }
+  stage2:
+    needs: stage1
+    if: always() && needs.stage1.outputs.done != 'true' && needs.stage1.result != 'cancelled'
+    uses: ./.github/workflows/gecko-stage-macos.yml
+    with: { stage: 2, restore_from: sccache-macos-stage1 }
+  stage3:
+    needs: [stage1, stage2]
+    if: always() && needs.stage1.outputs.done != 'true' && needs.stage2.outputs.done != 'true' && needs.stage2.result != 'cancelled' && needs.stage2.result != 'skipped'
+    uses: ./.github/workflows/gecko-stage-macos.yml
+    with: { stage: 3, restore_from: sccache-macos-stage2 }
+  result:
+    needs: [stage1, stage2, stage3]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Overall result (fails unless some stage finished the build)
+        run: |
+          echo "stage1 done=${{ needs.stage1.outputs.done }} (${{ needs.stage1.result }})"
+          echo "stage2 done=${{ needs.stage2.outputs.done }} (${{ needs.stage2.result }})"
+          echo "stage3 done=${{ needs.stage3.outputs.done }} (${{ needs.stage3.result }})"
+          if [ "${{ needs.stage1.outputs.done }}${{ needs.stage2.outputs.done }}${{ needs.stage3.outputs.done }}" = "" ] || ! echo "${{ needs.stage1.outputs.done }}${{ needs.stage2.outputs.done }}${{ needs.stage3.outputs.done }}" | grep -q true; then
+            echo "::error::No stage finished compiling Firefox"; exit 1; fi
+          for r in "${{ needs.stage1.result }}" "${{ needs.stage2.result }}" "${{ needs.stage3.result }}"; do
+            [ "$r" = "failure" ] && { echo "::error::A stage failed its acceptance gate"; exit 1; }; done
+          echo "Build finished; see the finishing stage's acceptance gate."

@@ -1,0 +1,3 @@
+Touch this file to start the macos Gecko experiment build (see docs/DEVELOPMENT_STATE.md).
+macOS run requested 2026-11-25T09:00:59Z
+macos attempt 2 requested 2026-11-25T14:45:03Z: staged build (<=3 jobs, local sccache handoff), --disable-debug-symbols, acceptance gate

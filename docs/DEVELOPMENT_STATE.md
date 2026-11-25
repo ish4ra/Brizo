@@ -5,7 +5,7 @@
 > The **Active state** section is current. Everything under **History** is a
 > record of earlier checkpoints and must not be treated as current instructions.
 
-_Last updated: 2026-11-25 ~10:50 UTC · Task 003 in progress (builds running)_
+_Last updated: 2026-11-25 · Task 003 continuation: workflow fixes, preflight, retries_
 
 ## Active state
 
@@ -22,31 +22,35 @@ architecture, and **not** approval to merge PR #3. Free infrastructure only.
 | Merged and finished branches (kept, do not delete) | `claude/great-gates-umqsa8` (PR #1), `claude/task-002-engine-feasibility` (PR #2), `claude/task-003-hero-correction` (PR #4), `claude/task-003-preview-links` (PR #5) |
 
 ### Build experiment status (Firefox 161.0, tag `FIREFOX_161_0_RELEASE`)
-| Platform | Run | Status at last check (10:46 UTC) | Notes |
-| --- | --- | --- | --- |
-| Linux x64 attempt 1 | [45580332174](https://github.com/ish4ra/Brizo/actions/runs/45580332174) | **Failed** | Source verified (26 s), configure OK (107 s). The runner got a shutdown signal (exit 143) 18 min into compile, and the `always()` steps were skipped, so **no metrics survived**. Memory exhaustion is **suspected, not proven** |
-| Linux x64 attempt 2 | [45584240076](https://github.com/ish4ra/Brizo/actions/runs/45584240076) | **Compiling** since 09:23 UTC | Adds a 16 GiB swapfile; memory, disk and build progress are streamed to the job log every 60 s |
-| macOS arm64 | [45581403273](https://github.com/ish4ra/Brizo/actions/runs/45581403273) | **Compiling** since 09:08 UTC | Native `macos-latest` (3 CPU / 7 GiB); configure succeeded with Xcode 26.6 SDK (Firefox 161 needs ≥ 26.5) |
-| Windows x64 | not started | Waiting for the Linux attempt 2 result | Workflow `gecko-build-windows.yml` ready (native `windows-latest`, MozillaBuild, runner's VS/SDK via `VC_PATH`/`WINDOWSSDKDIR`) |
+Details and evidence: `docs/research/GECKO_BUILD_EXPERIMENT.md`.
+| Platform | Run | Verified result |
+| --- | --- | --- |
+| Linux x64 #1 | [45580332174](https://github.com/ish4ra/Brizo/actions/runs/45580332174) | Runner lost ~18 min into compile; cause not proven (memory suspected) |
+| Linux x64 #2 | [45584240076](https://github.com/ish4ra/Brizo/actions/runs/45584240076) | **Compiled (6270 s) and packaged** (89,694,928 B, sha256 `e08f899c…5a41ba`). Peak 15.06 GiB RAM + 11.2 GiB swap. Smoke: launch/HTTPS/cert/tabs pass; **sandbox check failed** (seccomp 9/10, userns 0/10); about: pages not verified. **No artifacts** (upload path bug) — package not recoverable |
+| macOS arm64 #1 | [45581403273](https://github.com/ish4ra/Brizo/actions/runs/45581403273) | **Compile timed out** (exit 142 after 17,401 s, ≈ 55% done; est. cold ≈ 8.5 h). GitHub showed green because of `continue-on-error`. Metrics artifact 15029122780 |
+| Windows x64 | — | Not started before this session |
+| **Linux x64 #3** | [45637464100](https://github.com/ish4ra/Brizo/actions/runs/45637464100) | Running (commit `838e02b`): same build config, fixed upload paths, smoke v2 + AppArmor profile, acceptance gate |
+| **macOS arm64 #2 (staged)** | [45637464458](https://github.com/ish4ra/Brizo/actions/runs/45637464458) | Running: up to 3 chained jobs (~5 h each), local sccache handoff, `--disable-debug-symbols` |
+| **Windows x64 #1 (staged)** | [45637464606](https://github.com/ish4ra/Brizo/actions/runs/45637464606) | Running: up to 3 chained jobs, MozillaBuild + runner VS/SDK |
 
-**Do not** start another Linux or macOS build while these runs are active. **Do not** rerun a
-configuration that already succeeded. Builds start **only** by editing
-`engine/gecko/triggers/<linux|macos|windows>.txt` on the experiment branch.
+### Task 003 continuation work (this session)
+- README controls investigated and removed (D-019, PR #6 → `main` `d36c6d9`).
+- Artifact path bug fixed (canonical `RUNNER_TEMP`). Acceptance gates added. macOS/Windows staged
+  (up to 3 chained jobs, local sccache handoff). Preflight runs 45635212713, 45635843712 and
+  45637174497 all pass. Sandbox methodology fixed: official Firefox passes 7/7 seccomp and 7/7
+  userns with an AppArmor userns profile.
+- Retries triggered at `838e02b` (one each): Linux 45637464100, macOS 45637464458, Windows 45637464606.
+- Verified early: **configure succeeded on all three** (Windows: first successful configure with MozillaBuild and the runner's VS/SDK, no repackaged `vs`). Compiles in progress when this session stopped.
 
 ### Continuation steps (exact)
 1. `git fetch origin && git checkout claude/task-003-gecko-build && git pull`.
-2. Check runs 45584240076 and 45581403273 once (GitHub UI, or
-   `curl -s https://api.github.com/repos/ish4ra/Brizo/actions/runs/<id>/jobs`).
-3. For each finished run: download the `gecko-*-metrics` artifact (timings, resource CSV, smoke
-   results, `results.json`) and, if present, the `brizo-gecko-experiment-*` package artifact. Record
-   compile time, peak RAM, swap and disk, package size, SHA-256 and smoke results in
-   `docs/research/GECKO_BUILD_EXPERIMENT.md` (create it), and in the table above.
-4. If Linux attempt 2 failed: read the streamed `[res …]` lines in its job log and diagnose
-   before any change. Do not retry the identical configuration.
-5. After Linux is evaluated, start Windows: append a line to `engine/gecko/triggers/windows.txt`, then push.
-6. Then: security-update sustainability assessment and the GO / CONDITIONAL GO / NO-GO verdict
-   (`docs/research/ARCHITECTURE_DECISION_PROPOSAL.md` conditions C1–C4).
-7. Commit as the owner identity per CLAUDE.md §5a. Do not merge PR #3.
+2. Check the retry runs listed in the table (one check each; do not poll).
+3. For each finished run, read the job summary's **Acceptance gate** table and the
+   `gecko-*-metrics*` artifact, and record the results in `docs/research/GECKO_BUILD_EXPERIMENT.md`.
+4. Download links: an `brizo-gecko-experiment-161.0-<platform>` artifact (without a
+   `-DIAGNOSTIC` suffix) means the security gate passed.
+5. Do not re-trigger a platform without a documented, evidence-backed change.
+6. Then: security-update sustainability assessment and the architecture verdict.
 
 ### Branding (current, supersedes older notes below)
 - Public README hero = owner-selected **provisional V2 sailing hero** (D-015). Only

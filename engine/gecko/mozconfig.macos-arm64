@@ -1,0 +1,13 @@
+# Brizo Gecko feasibility experiment — macOS Apple Silicon (EXPERIMENTAL, not a release config).
+# Native build on Apple hardware (GitHub macos-latest, arm64) with Apple's own
+# Xcode SDK. The workflow appends --with-macos-sdk=<xcrun SDK path> so the
+# build never downloads a third-party repackaged Apple SDK.
+ac_add_options --enable-application=browser
+ac_add_options --enable-bootstrap
+ac_add_options --with-ccache=sccache
+ac_add_options --disable-tests
+# Unofficial branding (no --enable-official-branding), per Mozilla trademark policy.
+mk_add_options MOZ_OBJDIR=@TOPSRCDIR@/../obj-brizo
+# Experiment-only speed/memory saving (Task 003 retry): no debug symbols, so
+# crash reports cannot be symbolicated. No effect on runtime security features.
+ac_add_options --disable-debug-symbols

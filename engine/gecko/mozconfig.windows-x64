@@ -1,0 +1,13 @@
+# Brizo Gecko feasibility experiment — Windows x64 (EXPERIMENTAL, not a release config).
+# Native build on GitHub windows-latest. VC_PATH and WINDOWSSDKDIR point at the
+# Visual Studio / Windows SDK installed on the runner, which prevents configure
+# from bootstrapping Mozilla's repackaged "vs" toolchain.
+ac_add_options --enable-application=browser
+ac_add_options --enable-bootstrap
+# sccache path is appended by the workflow (MozillaBuild login shell may reset PATH)
+ac_add_options --disable-tests
+# Unofficial branding (no --enable-official-branding), per Mozilla trademark policy.
+mk_add_options MOZ_OBJDIR=@TOPSRCDIR@/../obj-brizo
+# Experiment-only speed/memory saving: no debug symbols (no PDB-based crash
+# symbolication). No effect on runtime security features.
+ac_add_options --disable-debug-symbols

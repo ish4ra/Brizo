@@ -1,0 +1,194 @@
+# Reusable: ONE stage of the staged macOS arm64 Gecko build (called by
+# gecko-build-macos.yml; never triggered on its own).
+# Each stage repeats the same verified source + configure, restores the local
+# sccache directory from the previous stage (artifact), compiles until a time
+# budget, then hands the cache to the next stage. If the build finishes, the
+# stage packages, smoke-tests and uploads. Identical paths on every macOS runner
+# keep sccache keys stable.
+name: gecko-stage-macos
+
+on:
+  workflow_call:
+    inputs:
+      stage: { type: number, required: true }
+      restore_from: { type: string, required: false, default: "" }
+    outputs:
+      done:
+        value: ${{ jobs.stage.outputs.done }}
+
+env:
+  FIREFOX_VERSION: "161.0"
+  SCCACHE_GHA_ENABLED: "false"     # local disk cache, handed over as an artifact
+  SCCACHE_CACHE_SIZE: "40G"
+  XCODE_APP: /Applications/Xcode_26.6.app
+
+jobs:
+  stage:
+    runs-on: macos-latest
+    timeout-minutes: 355
+    outputs:
+      done: ${{ steps.compile.outcome == 'success' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Canonical paths, tools, monitor
+        run: |
+          for v in METRICS=metrics OUT=out SRC_ROOT=src MOZBUILD_STATE_PATH=.mozbuild SCCACHE_DIR=sccache; do
+            echo "${v%%=*}=$RUNNER_TEMP/${v#*=}" >> "$GITHUB_ENV"; done
+          mkdir -p "$RUNNER_TEMP/metrics" "$RUNNER_TEMP/out" "$RUNNER_TEMP/sccache"
+          pip install --quiet "psutil==7.0.0" "websockets==15.0.1"
+          nohup python engine/gecko/monitor.py "$RUNNER_TEMP/metrics/resources.csv" / >/dev/null 2>&1 &
+          echo $! > "$RUNNER_TEMP/metrics/monitor.pid"
+          echo "stage ${{ inputs.stage }}; restore_from='${{ inputs.restore_from }}'" | tee "$RUNNER_TEMP/metrics/stage.txt"
+          command -v gpg || brew install gnupg
+
+      - name: Restore compiler cache from previous stage
+        if: inputs.restore_from != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.restore_from }}
+          path: ${{ runner.temp }}/sccache
+
+      - name: Select Xcode and record SDK
+        id: sdk
+        run: |
+          du -sh "$SCCACHE_DIR" | tee "$METRICS/cache-restored.txt"
+          sudo xcode-select -s "$XCODE_APP"
+          SDK="$(xcrun --sdk macosx --show-sdk-path)"
+          echo "sdk=$SDK" >> "$GITHUB_OUTPUT"; echo "macOS SDK $(xcrun --sdk macosx --show-sdk-version) at $SDK" | tee "$METRICS/xcode.txt"
+
+      - name: Fetch and verify Firefox source
+        id: src
+        run: engine/gecko/step.sh "$METRICS/timings.csv" fetch_verify_unpack engine/gecko/fetch-source.sh "$FIREFOX_VERSION" "$SRC_ROOT"
+
+      - name: Set up sccache
+        uses: mozilla-actions/sccache-action@v0.0.9
+
+      - name: Configure
+        id: configure
+        working-directory: ${{ steps.src.outputs.srcdir }}
+        run: |
+          cp "$GITHUB_WORKSPACE/engine/gecko/mozconfig.macos-arm64" mozconfig
+          echo "ac_add_options --with-macos-sdk=${{ steps.sdk.outputs.sdk }}" >> mozconfig
+          export MOZCONFIG="$PWD/mozconfig"
+          "$GITHUB_WORKSPACE/engine/gecko/step.sh" "$METRICS/timings.csv" configure ./mach --no-interactive configure > "$METRICS/configure.log" 2>&1
+          RC=$?; tail -n 40 "$METRICS/configure.log"; exit $RC
+
+      - name: Compile (time-budgeted; stage hands over the cache if unfinished)
+        id: compile
+        continue-on-error: true
+        working-directory: ${{ steps.src.outputs.srcdir }}
+        run: |
+          export MOZCONFIG="$PWD/mozconfig"
+          set +e
+          ( while true; do echo "[res $(date -u +%H:%M:%S)] $(python3 -c 'import psutil;v=psutil.virtual_memory();s=psutil.swap_memory();print(f"mem used={v.used>>20}M avail={v.available>>20}M swap used={s.used>>20}M")') | $(tail -n 1 "$METRICS/build.log" 2>/dev/null | cut -c1-140)"; sleep 120; done ) &
+          TICKER=$!
+          # 285 min budget leaves time for cache upload or packaging/smoke/upload.
+          "$GITHUB_WORKSPACE/engine/gecko/step.sh" "$METRICS/timings.csv" compile \
+            /usr/bin/env perl -e 'alarm 17100; exec @ARGV' ./mach --no-interactive build > "$METRICS/build.log" 2>&1
+          RC=$?
+          kill $TICKER 2>/dev/null
+          tail -n 60 "$METRICS/build.log"; gzip -f "$METRICS/build.log"
+          echo "compile exit code: $RC (142 = time budget reached; cache handed to next stage)"
+          exit $RC
+
+      - name: Stop sccache and record cache size
+        if: always()
+        run: |
+          sccache --show-stats > "$METRICS/sccache-stats.txt" 2>&1 || true
+          sccache --stop-server >/dev/null 2>&1 || true
+          du -sh "$SCCACHE_DIR" | tee "$METRICS/cache-final.txt"
+          cat "$METRICS/sccache-stats.txt" | grep -E "requests executed|hits rate|write errors|Cache size" || true
+
+      - name: Hand compiler cache to the next stage
+        if: steps.compile.outcome != 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: sccache-macos-stage${{ inputs.stage }}
+          path: ${{ runner.temp }}/sccache
+          retention-days: 3
+          compression-level: 0
+
+      - name: Package
+        id: pkg
+        if: steps.compile.outcome == 'success'
+        continue-on-error: true
+        working-directory: ${{ steps.src.outputs.srcdir }}
+        run: |
+          export MOZCONFIG="$PWD/mozconfig"
+          "$GITHUB_WORKSPACE/engine/gecko/step.sh" "$METRICS/timings.csv" package ./mach --no-interactive package > "$METRICS/package.log" 2>&1 || { tail -n 80 "$METRICS/package.log"; exit 1; }
+          PKG=$(ls ../obj-brizo/dist/*.dmg | head -1)
+          F="brizo-gecko-experiment-${FIREFOX_VERSION}-macos-arm64.dmg"
+          cp "$PKG" "$OUT/$F"
+          (cd "$OUT" && shasum -a 256 "$F" > SHA256SUMS.txt && cat SHA256SUMS.txt)
+          echo "pkg=$OUT/$F" >> "$GITHUB_OUTPUT"
+
+      - name: Smoke and security test (packaged app, arm64)
+        id: smoke
+        if: steps.pkg.outcome == 'success'
+        continue-on-error: true
+        run: |
+          MNT=$(mktemp -d)
+          hdiutil attach -nobrowse -readonly -mountpoint "$MNT" "${{ steps.pkg.outputs.pkg }}"
+          APP=$(ls -d "$MNT"/*.app | head -1); cp -R "$APP" "$RUNNER_TEMP/BrizoExperiment.app"; hdiutil detach "$MNT"
+          codesign -dv --verbose=2 "$RUNNER_TEMP/BrizoExperiment.app" > "$METRICS/codesign.txt" 2>&1 || true
+          spctl -a -vv "$RUNNER_TEMP/BrizoExperiment.app" > "$METRICS/gatekeeper-assessment.txt" 2>&1 || true
+          file "$RUNNER_TEMP/BrizoExperiment.app/Contents/MacOS/firefox" | tee "$METRICS/arch.txt"
+          cat "$METRICS/codesign.txt" "$METRICS/gatekeeper-assessment.txt"
+          engine/gecko/step.sh "$METRICS/timings.csv" smoke_test python engine/gecko/smoke_test.py "$RUNNER_TEMP/BrizoExperiment.app/Contents/MacOS/firefox" "$METRICS/smoke"
+
+      - name: Classify package
+        id: label
+        if: always()
+        run: |
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import json, os
+          p = os.path.join(os.environ["METRICS"], "smoke", "smoke.json")
+          r = json.load(open(p)) if os.path.exists(p) else []
+          sec = [x for x in r if x["check"].startswith(("content_sandbox", "certificate_validation"))]
+          print("suffix=" + ("" if sec and all(x["status"] == "pass" for x in sec) else "-DIAGNOSTIC-security-unverified"))
+          PY
+
+      - name: Summarise measurements
+        if: always()
+        run: |
+          kill "$(cat "$METRICS/monitor.pid")" 2>/dev/null || true
+          df -h / | tee "$METRICS/disk-final.txt"
+          python engine/gecko/write_env.py "$METRICS" "macos-latest stage ${{ inputs.stage }}" "${{ steps.src.outputs.source_sha256 }}" "${{ steps.compile.outcome }}" "${{ steps.pkg.outputs.pkg }}"
+          python engine/gecko/summarize.py "$METRICS"
+
+      - name: Upload metrics and logs
+        id: up_metrics
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: gecko-macos-arm64-metrics-stage${{ inputs.stage }}
+          path: ${{ runner.temp }}/metrics
+          retention-days: 30
+
+      - name: Upload experimental package
+        id: up_pkg
+        if: steps.pkg.outcome == 'success'
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: brizo-gecko-experiment-${{ env.FIREFOX_VERSION }}-macos-arm64${{ steps.label.outputs.suffix }}
+          path: ${{ runner.temp }}/out
+          retention-days: 30
+          compression-level: 0
+
+      - name: Acceptance gate (only when this stage finished the build)
+        if: always() && steps.compile.outcome == 'success'
+        env:
+          OUTCOME_SOURCE: ${{ steps.src.outcome }}
+          OUTCOME_CONFIGURE: ${{ steps.configure.outcome }}
+          OUTCOME_COMPILE: ${{ steps.compile.outcome }}
+          OUTCOME_PACKAGE: ${{ steps.pkg.outcome }}
+          OUTCOME_SMOKE: ${{ steps.smoke.outcome }}
+          OUTCOME_METRICS_UPLOAD: ${{ steps.up_metrics.outcome }}
+          OUTCOME_PACKAGE_UPLOAD: ${{ steps.up_pkg.outcome }}
+        run: python engine/gecko/acceptance.py "$METRICS" macos-arm64

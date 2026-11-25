@@ -1,0 +1,2 @@
+Touch this file to start the windows Gecko experiment build (see docs/DEVELOPMENT_STATE.md).
+windows attempt 1 requested 2026-11-25T14:45:03Z: staged build, MozillaBuild + runner VS/SDK, acceptance gate

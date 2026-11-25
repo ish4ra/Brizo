@@ -1,0 +1,184 @@
+# Task 003: Gecko build experiment, Linux x64 (attempt 3 layout).
+# EXPERIMENTAL feasibility build of unmodified, unbranded Firefox source on a
+# standard GitHub-hosted runner (free for public repositories). Not a release.
+#
+# Changes after attempt 2 (run 45584240076):
+#  * all uploaded paths are canonical RUNNER_TEMP paths (attempt 2 lost its
+#    artifacts to "Relative pathing '.' and '..' is not allowed");
+#  * every stage has an explicit outcome and a final acceptance gate fails the
+#    job if compile/package/smoke/security/upload failed (no hidden failures);
+#  * smoke test v2 (Firefox's own sandbox report, Marionette privileged checks,
+#    process-type classification), run with an Ubuntu-style AppArmor userns
+#    profile, which enables, not weakens, Firefox's namespace sandbox;
+#  * packages that fail the security gate are uploaded only as clearly
+#    labelled DIAGNOSTIC artifacts.
+# Unchanged: Firefox 161.0, mozconfig.linux-x64, 16 GiB swap, sccache (GHA).
+name: Gecko build experiment (Linux x64)
+
+on:
+  push:
+    branches: ["claude/task-003-gecko-build"]
+    paths: ["engine/gecko/triggers/linux.txt"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gecko-build-linux
+  cancel-in-progress: false
+
+env:
+  FIREFOX_VERSION: "161.0"          # tag FIREFOX_161_0_RELEASE
+  SCCACHE_GHA_ENABLED: "true"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 355            # GitHub limit is 360 min per job
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Canonical paths and resource monitor
+        run: |
+          for v in METRICS=metrics OUT=out SRC_ROOT=src MOZBUILD_STATE_PATH=.mozbuild; do
+            echo "${v%%=*}=$RUNNER_TEMP/${v#*=}" >> "$GITHUB_ENV"; done
+          mkdir -p "$RUNNER_TEMP/metrics" "$RUNNER_TEMP/out"
+          nohup engine/gecko/monitor.sh "$RUNNER_TEMP/metrics/resources.csv" / >/dev/null 2>&1 &
+          echo $! > "$RUNNER_TEMP/metrics/monitor.pid"
+          df -h / | tee "$RUNNER_TEMP/metrics/disk-initial.txt"; nproc; free -g
+
+      - name: Free disk (remove unused preinstalled toolchains in this VM)
+        run: |
+          engine/gecko/step.sh "$METRICS/timings.csv" free_disk bash -c '
+            sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/.ghcup \
+              /opt/hostedtoolcache/CodeQL /usr/local/share/boost /usr/share/swift
+            sudo docker image prune --all --force >/dev/null'
+          df -h / | tee "$METRICS/disk-after-cleanup.txt"
+
+      - name: Add 16 GiB swap (attempt 2 peaked at 15.06 GiB RAM + 11.2 GiB swap)
+        run: |
+          sudo fallocate -l 16G /swapfile-brizo && sudo chmod 600 /swapfile-brizo
+          sudo mkswap /swapfile-brizo >/dev/null && sudo swapon /swapfile-brizo
+          free -m | tee "$METRICS/memory-after-swap.txt"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Fetch and verify Firefox source
+        id: src
+        run: engine/gecko/step.sh "$METRICS/timings.csv" fetch_verify_unpack engine/gecko/fetch-source.sh "$FIREFOX_VERSION" "$SRC_ROOT"
+
+      - name: Set up sccache
+        uses: mozilla-actions/sccache-action@v0.0.9
+
+      - name: Configure (bootstraps pinned upstream toolchains)
+        id: configure
+        working-directory: ${{ steps.src.outputs.srcdir }}
+        run: |
+          cp "$GITHUB_WORKSPACE/engine/gecko/mozconfig.linux-x64" mozconfig
+          export MOZCONFIG="$PWD/mozconfig"
+          "$GITHUB_WORKSPACE/engine/gecko/step.sh" "$METRICS/timings.csv" configure ./mach --no-interactive configure > "$METRICS/configure.log" 2>&1
+          RC=$?; tail -n 40 "$METRICS/configure.log"; exit $RC
+
+      - name: Compile
+        id: compile
+        continue-on-error: true
+        working-directory: ${{ steps.src.outputs.srcdir }}
+        run: |
+          export MOZCONFIG="$PWD/mozconfig"
+          set +e
+          ( while true; do
+              echo "[res $(date -u +%H:%M:%S)] $(free -m | awk '/Mem:/{printf "mem used=%sM avail=%sM",$3,$7} /Swap:/{printf " swap used=%sM",$3}') disk_avail=$(df -BG --output=avail / | tail -1 | tr -d ' ') load=$(cut -d' ' -f1 /proc/loadavg) | $(tail -n 1 "$METRICS/build.log" 2>/dev/null | cut -c1-150)"
+              sleep 60
+            done ) &
+          TICKER=$!
+          "$GITHUB_WORKSPACE/engine/gecko/step.sh" "$METRICS/timings.csv" compile \
+            timeout 300m ./mach --no-interactive build > "$METRICS/build.log" 2>&1
+          RC=$?
+          kill $TICKER 2>/dev/null
+          tail -n 120 "$METRICS/build.log"
+          gzip -f "$METRICS/build.log"
+          echo "compile exit code: $RC (124 = 300 min timeout)"
+          exit $RC
+
+      - name: Package
+        id: pkg
+        if: steps.compile.outcome == 'success'
+        continue-on-error: true
+        working-directory: ${{ steps.src.outputs.srcdir }}
+        run: |
+          export MOZCONFIG="$PWD/mozconfig"
+          "$GITHUB_WORKSPACE/engine/gecko/step.sh" "$METRICS/timings.csv" package ./mach --no-interactive package > "$METRICS/package.log" 2>&1 || { tail -n 80 "$METRICS/package.log"; exit 1; }
+          PKG=$(ls ../obj-brizo/dist/firefox-*.tar.* | head -1)
+          F="brizo-gecko-experiment-${FIREFOX_VERSION}-linux-x86_64.tar.${PKG##*.tar.}"
+          cp "$PKG" "$OUT/$F"
+          (cd "$OUT" && sha256sum "$F" > SHA256SUMS.txt && cat SHA256SUMS.txt)
+          echo "pkg=$OUT/$F" >> "$GITHUB_OUTPUT"
+
+      - name: Smoke and security test (packaged build, AppArmor userns profile)
+        id: smoke
+        if: steps.pkg.outcome == 'success'
+        continue-on-error: true
+        run: |
+          pip install --quiet "websockets==15.0.1"
+          mkdir -p "$RUNNER_TEMP/app" && tar -xf "${{ steps.pkg.outputs.pkg }}" -C "$RUNNER_TEMP/app"
+          engine/gecko/host-sandbox-facts.sh | tee "$METRICS/host-facts.txt"
+          engine/gecko/install-apparmor-profile.sh "$RUNNER_TEMP/app/firefox" | tee -a "$METRICS/host-facts.txt"
+          engine/gecko/step.sh "$METRICS/timings.csv" smoke_test python engine/gecko/smoke_test.py "$RUNNER_TEMP/app/firefox/firefox" "$METRICS/smoke"
+
+      - name: Classify package (security gate decides the label)
+        id: label
+        if: always()
+        run: |
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import json, os
+          p = os.path.join(os.environ["METRICS"], "smoke", "smoke.json")
+          r = json.load(open(p)) if os.path.exists(p) else []
+          sec = [x for x in r if x["check"].startswith(("content_sandbox", "linux_content", "certificate_validation"))]
+          ok = bool(sec) and all(x["status"] == "pass" for x in sec)
+          print("suffix=" + ("" if ok else "-DIAGNOSTIC-security-unverified"))
+          PY
+
+      - name: Summarise measurements
+        if: always()
+        run: |
+          kill "$(cat "$METRICS/monitor.pid")" 2>/dev/null || true
+          sccache --show-stats > "$METRICS/sccache-stats.txt" 2>&1 || true
+          df -h / | tee "$METRICS/disk-final.txt"
+          python engine/gecko/write_env.py "$METRICS" ubuntu-latest "${{ steps.src.outputs.source_sha256 }}" "${{ steps.compile.outcome }}" "${{ steps.pkg.outputs.pkg }}"
+          python engine/gecko/summarize.py "$METRICS"
+
+      - name: Upload metrics and logs
+        id: up_metrics
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: gecko-linux-x64-metrics
+          path: ${{ runner.temp }}/metrics
+          retention-days: 30
+
+      - name: Upload experimental package
+        id: up_pkg
+        if: steps.pkg.outcome == 'success'
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: brizo-gecko-experiment-${{ env.FIREFOX_VERSION }}-linux-x86_64${{ steps.label.outputs.suffix }}
+          path: ${{ runner.temp }}/out
+          retention-days: 30
+          compression-level: 0
+
+      - name: Acceptance gate (fails the job if any stage or security check failed)
+        if: always()
+        env:
+          OUTCOME_SOURCE: ${{ steps.src.outcome }}
+          OUTCOME_CONFIGURE: ${{ steps.configure.outcome }}
+          OUTCOME_COMPILE: ${{ steps.compile.outcome }}
+          OUTCOME_PACKAGE: ${{ steps.pkg.outcome }}
+          OUTCOME_SMOKE: ${{ steps.smoke.outcome }}
+          OUTCOME_METRICS_UPLOAD: ${{ steps.up_metrics.outcome }}
+          OUTCOME_PACKAGE_UPLOAD: ${{ steps.up_pkg.outcome }}
+        run: python engine/gecko/acceptance.py "$METRICS" linux-x64
