@@ -12,3 +12,5 @@
 <details><summary>T5</summary>x</details>
 
 <img src="../assets/readme/icon-sun.svg" width="14" alt="T6 bare img">
+
+<img src="render-probe-responsive.svg" width="14" alt="T7 responsive">

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 460" width="1280" height="460">
+<title>probe</title>
+<style>
+.small{display:none} .large{display:inline}
+@media (max-width: 64px) { .small{display:inline} .large{display:none} }
+</style>
+<g class="large"><rect width="1280" height="460" fill="#F4F8FC"/><text x="40" y="240" font-size="120" fill="#174EA4">LARGE VIEW</text></g>
+<g class="small"><rect width="1280" height="460" fill="#1684D1"/></g>
+</svg>
