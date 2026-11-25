@@ -99,7 +99,7 @@ trademark clearance (see BRAND_PROVENANCE, D-014). Scope is limited to
 `validate.mjs`. All other logo assets (exports, icons, master, reference) stay
 private. The temporary motif remains recoverable from git history (commit `e809bd7`).
 
-## D-016 · 2026-11-25 · Accepted: README appearance previews
+## D-016 · 2026-11-25 · Superseded by D-018: README appearance previews
 The long appearance-settings line was replaced with a collapsed `<details>` control
 (sun/moon icons, bottom-right of the hero). It shows explicit light **and** dark
 renderings of the banner whatever the viewer's theme, with reduced-motion fallbacks.
@@ -108,3 +108,10 @@ It does not change GitHub's theme or the main hero. No scripts, iframes or exter
 ## D-017 · 2026-11-25 · Accepted: Commit attribution policy
 Future commits are authored as the owner's public GitHub no-reply identity, with no
 Claude co-author trailer (CLAUDE.md §5a). Existing history is unchanged.
+
+## D-018 · 2026-11-25 · Accepted (owner decision): Preview icons are plain links; D-016 superseded
+The `<details>` preview (D-016) showed three banners when expanded and was rejected.
+It is replaced by two independent 14 px icon links under the hero: the sun opens
+`hero-light.svg` and the moon opens `hero-dark.svg` on raw.githubusercontent.com
+(served as `image/svg+xml`). The README always renders exactly one hero banner.
+Nothing changes GitHub's theme.
