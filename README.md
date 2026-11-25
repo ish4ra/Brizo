@@ -7,23 +7,7 @@
   <img alt="Brizo — Fast. Private. Lightweight. Open. The Brizo sailboat sails across animated waves. Early development: architecture and foundation." src="assets/readme/hero-light.svg" width="100%">
 </picture>
 
-<div align="right"><details><summary><a name="appearance-preview"><img src="assets/readme/icon-sun.svg" width="14" height="14" alt="Light preview">&nbsp;<img src="assets/readme/icon-moon.svg" width="14" height="14" alt="Dark preview"></a></summary>
-
-<picture>
-  <source media="(prefers-reduced-motion: reduce)" srcset="assets/readme/static/hero-light.png">
-  <img alt="Light preview of the Brizo banner" src="assets/readme/hero-light.svg" width="100%">
-</picture>
-<sub>Light preview</sub>
-
-<picture>
-  <source media="(prefers-reduced-motion: reduce)" srcset="assets/readme/static/hero-dark.png">
-  <img alt="Dark preview of the Brizo banner" src="assets/readme/hero-dark.svg" width="100%">
-</picture>
-<sub>Dark preview</sub>
-
-</details></div>
-
-<br>
+<p align="right"><a href="https://raw.githubusercontent.com/ish4ra/Brizo/main/assets/readme/hero-light.svg" title="Light preview: open the light banner artwork"><img src="assets/readme/icon-sun.svg" width="14" height="14" alt="Light preview"></a>&nbsp;<a href="https://raw.githubusercontent.com/ish4ra/Brizo/main/assets/readme/hero-dark.svg" title="Dark preview: open the dark banner artwork"><img src="assets/readme/icon-moon.svg" width="14" height="14" alt="Dark preview"></a></p>
 
 [![Status: early development](assets/readme/badge-status.svg)](docs/DEVELOPMENT_STATE.md)
 [![Phase 0: foundation](assets/readme/badge-phase.svg)](docs/ROADMAP.md)
