@@ -18,6 +18,7 @@ Phases (update as you go):
   - Run 2: https://github.com/ish4ra/Brizo/actions/runs/45584240076 (`fa61ecc`): same config plus a 16 GiB swapfile, with memory, disk and build progress streamed to the job log every 60 s (evidence survives a runner loss)
 - [x] T2 Logo provenance check: rights NOT established (no metadata or authorship record; only a Google/Skia ICC profile). Name: a reported live BRIZO Class 9 registration by Delta Faucet Co. (unverified at USPTO). Decision: the public hero uses a distinct temporary motif
 - [x] T3 Public hero = V2 layout and animation with a temporary distinct sloop motif (`e809bd7`); live GitHub render verified (4 theme × motion combos, 0 broken images)
+- [x] T3b **Owner correction:** the sloop was rejected. The approved V2 hero with the exact provisional mark is published (D-015, narrow validator whitelist); a compact sun/moon `<details>` light/dark preview replaces the settings line (D-016); attribution policy set (D-017, CLAUDE.md §5a). PR [ish4ra/Brizo#4](https://github.com/ish4ra/Brizo/pull/4) merged → `main` **`e6cb200`**; live render verified; no build triggers touched
 - [x] T4 PR #1 merged → `main` `eae736c`; PR #2 retargeted, `main` merged in (`66ffefd`), merged → `main` **`5d020fc`** (merge commits, history preserved, original branches kept)
 - [ ] T5 Platform builds (incremental)
   - macOS arm64 run 1: https://github.com/ish4ra/Brizo/actions/runs/45581403273 (commit `49eaca1`, native `macos-latest`, Xcode 26.6 SDK; Firefox 161 needs SDK ≥ 26.5)
