@@ -1,0 +1,13 @@
+# Brizo Gecko feasibility experiment — Linux x64 (EXPERIMENTAL, not a release config).
+# Upstream defaults are kept unless listed here. No security feature is disabled.
+ac_add_options --enable-application=browser
+# Let Mozilla's own tooling fetch the pinned toolchains (clang, rust, cbindgen,
+# nasm, node, sysroot) exactly as upstream CI does.
+ac_add_options --enable-bootstrap
+# Compiler cache (GitHub Actions cache backend via SCCACHE_GHA_ENABLED).
+ac_add_options --with-ccache=sccache
+# Do not build test-only binaries (gtest, etc.). Runtime behaviour is unaffected.
+ac_add_options --disable-tests
+# Branding: no --enable-official-branding => Mozilla's "unofficial" branding,
+# as required by Mozilla's trademark policy for third-party builds.
+mk_add_options MOZ_OBJDIR=@TOPSRCDIR@/../obj-brizo
