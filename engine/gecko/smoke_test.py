@@ -105,10 +105,13 @@ class Marionette:
 
 profile = tempfile.mkdtemp(prefix="brizo-smoke-")
 log = open(os.path.join(OUT, "browser-stderr.log"), "w")
+# MOZ_REMOTE_ALLOW_SYSTEM_ACCESS: Mozilla's documented opt-in that lets the
+# automation session use the privileged (chrome) context; test process only.
+env = dict(os.environ, MOZ_REMOTE_ALLOW_SYSTEM_ACCESS="1")
 proc = subprocess.Popen(
     [BIN, "--headless", "--no-remote", "--profile", profile, "--marionette",
      f"--remote-debugging-port={BIDI_PORT}", "about:blank"],
-    stdout=log, stderr=subprocess.STDOUT,
+    stdout=log, stderr=subprocess.STDOUT, env=env,
 )
 
 ws = None
@@ -175,12 +178,8 @@ try:
     b.call("browsingContext.navigate", {"context": ctx, "url": "https://example.com/", "wait": "complete"})
 except Exception:  # noqa: BLE001
     pass
-try:
-    b.call("session.end", {})
-except Exception:  # noqa: BLE001
-    pass
-ws.close()
-time.sleep(2)
+
+time.sleep(3)  # let content processes finish sandbox setup
 
 # ------------------------------------------------ Process-level evidence (Linux)
 procs = []
@@ -205,6 +204,13 @@ if IS_LINUX:
     except Exception as e:  # noqa: BLE001
         record("process_inventory", "not-verified", e)
     json.dump(procs, open(os.path.join(OUT, "sandbox-processes.json"), "w"), indent=2)
+
+try:
+    b.call("session.end", {})
+except Exception:  # noqa: BLE001
+    pass
+ws.close()
+time.sleep(1)
 
 # ------------------------------------------- Marionette (privileged) checks
 sandbox = None
@@ -294,8 +300,15 @@ try:
         for rel in (["omni.ja"], ["browser", "omni.ja"]):
             omni = os.path.join(d, *rel)
             if os.path.exists(omni):
-                with zipfile.ZipFile(omni) as z:
-                    names.update(z.namelist())
+                raw = open(omni, "rb").read()
+                try:
+                    with zipfile.ZipFile(omni) as z:
+                        names.update(z.namelist())
+                except zipfile.BadZipFile:
+                    # Mozilla's optimised omni.ja layout: entry names are still stored verbatim
+                    for n in (b"preferences/preferences.xhtml", b"aboutaddons.html"):
+                        if n in raw:
+                            names.add(n.decode())
     record("package_contains_settings_ui", "pass" if any(n.endswith("preferences/preferences.xhtml") for n in names) else "fail")
     record("package_contains_addons_manager", "pass" if any(n.endswith("aboutaddons.html") for n in names) else "fail")
 except Exception as e:  # noqa: BLE001
