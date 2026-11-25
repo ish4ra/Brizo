@@ -16,6 +16,11 @@ Plan / progress (update as you go):
 - [x] A3 Compact appearance control (sun/moon + official GitHub appearance settings link, labelled honestly) + website theme-toggle design doc
 - [x] A4 Checkpoint on `claude/great-gates-umqsa8` (PR #1): `f9b68e7` + follow-up
 - [ ] B  Feasibility research on dependent branch `claude/task-002-engine-feasibility` (PR → `claude/great-gates-umqsa8`)
+  - [x] B1 Runner probe (run 45566601756, all 6 jobs green) → `research/probe/RESULTS-2026-11-25.md`
+  - [x] B2 Primary sources gathered (GitHub docs, Chromium docs, ungoogled-chromium/Helium, Zen, uBO/uBOL, adblock-rust, MDN, polyfill, Electron, Qt, CEF, yt-dlp, FFmpeg, aria2)
+  - [ ] B3 Research documents in `docs/research/`
+  - [ ] B4 Architecture decision proposal (GO / CONDITIONAL GO / NO-GO)
+  - [ ] B5 Draft PR for the research branch
 
 Task 001 (foundation) is complete; see git history up to `a283b9e`.
 
