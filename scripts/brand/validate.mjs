@@ -47,15 +47,23 @@ for (const f of svgs) {
 ok(`${svgs.length} tracked SVGs parsed, safe, on-palette`);
 
 // 3. Logo geometry must not leak into tracked files while provenance is unresolved.
+// Narrow, owner-approved exception (D-015): ONLY the two public V2 hero SVGs may
+// contain the provisional mark, and each must carry the provenance banner.
+const PUBLISHED_LOGO_FILES = ['assets/readme/hero-light.svg', 'assets/readme/hero-dark.svg'];
+for (const f of PUBLISHED_LOGO_FILES) {
+  const src = fs.existsSync(path.join(REPO, f)) ? fs.readFileSync(path.join(REPO, f), 'utf8') : '';
+  if (!src.includes('PROVISIONAL Brizo mark') || !src.includes('BRAND_PROVENANCE')) fail(`${f}: published logo file lacks the provenance banner`);
+}
 const master = path.join(REPO, 'branding-private/source/brizo-mark.svg');
 if (fs.existsSync(master)) {
   const ds = [...fs.readFileSync(master, 'utf8').matchAll(/\sd="([^"]{40,})"/g)].map((m) => m[1].slice(0, 40));
   for (const f of tracked) {
     if (/\.(png|ico|icns|bmp|webp|woff2?)$/.test(f)) continue;
+    if (PUBLISHED_LOGO_FILES.includes(f)) continue; // owner-approved exception (D-015)
     const s = fs.readFileSync(path.join(REPO, f), 'utf8');
     for (const d of ds) if (s.includes(d)) fail(`${f}: contains private logo geometry`);
   }
-  ok('no private logo geometry in tracked files');
+  ok(`no private logo geometry in tracked files (except ${PUBLISHED_LOGO_FILES.length} owner-approved hero files)`);
 } else ok('private logo master not present (skipped leak check against geometry)');
 for (const f of tracked) if (f.startsWith('branding-private/')) fail(`${f}: private branding file is tracked`);
 for (const f of tracked) if (/\.(webp|icns|ico|bmp)$/i.test(f)) fail(`${f}: logo-type binary in tracked files`);
