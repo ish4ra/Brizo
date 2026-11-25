@@ -5,7 +5,7 @@
 > The **Active state** section is current. Everything under **History** is a
 > record of earlier checkpoints and must not be treated as current instructions.
 
-_Last updated: 2026-11-25 ~10:50 UTC · Task 003 in progress (builds running)_
+_Last updated: 2026-11-25 · Task 003 continuation: workflow fixes, preflight, retries_
 
 ## Active state
 
@@ -22,16 +22,13 @@ architecture, and **not** approval to merge PR #3. Free infrastructure only.
 | Merged and finished branches (kept, do not delete) | `claude/great-gates-umqsa8` (PR #1), `claude/task-002-engine-feasibility` (PR #2), `claude/task-003-hero-correction` (PR #4), `claude/task-003-preview-links` (PR #5) |
 
 ### Build experiment status (Firefox 161.0, tag `FIREFOX_161_0_RELEASE`)
-| Platform | Run | Status at last check (10:46 UTC) | Notes |
-| --- | --- | --- | --- |
-| Linux x64 attempt 1 | [45580332174](https://github.com/ish4ra/Brizo/actions/runs/45580332174) | **Failed** | Source verified (26 s), configure OK (107 s). The runner got a shutdown signal (exit 143) 18 min into compile, and the `always()` steps were skipped, so **no metrics survived**. Memory exhaustion is **suspected, not proven** |
-| Linux x64 attempt 2 | [45584240076](https://github.com/ish4ra/Brizo/actions/runs/45584240076) | **Compiling** since 09:23 UTC | Adds a 16 GiB swapfile; memory, disk and build progress are streamed to the job log every 60 s |
-| macOS arm64 | [45581403273](https://github.com/ish4ra/Brizo/actions/runs/45581403273) | **Compiling** since 09:08 UTC | Native `macos-latest` (3 CPU / 7 GiB); configure succeeded with Xcode 26.6 SDK (Firefox 161 needs ≥ 26.5) |
-| Windows x64 | not started | Waiting for the Linux attempt 2 result | Workflow `gecko-build-windows.yml` ready (native `windows-latest`, MozillaBuild, runner's VS/SDK via `VC_PATH`/`WINDOWSSDKDIR`) |
-
-**Do not** start another Linux or macOS build while these runs are active. **Do not** rerun a
-configuration that already succeeded. Builds start **only** by editing
-`engine/gecko/triggers/<linux|macos|windows>.txt` on the experiment branch.
+Details and evidence: `docs/research/GECKO_BUILD_EXPERIMENT.md`.
+| Platform | Run | Verified result |
+| --- | --- | --- |
+| Linux x64 #1 | [45580332174](https://github.com/ish4ra/Brizo/actions/runs/45580332174) | Runner lost ~18 min into compile; cause not proven (memory suspected) |
+| Linux x64 #2 | [45584240076](https://github.com/ish4ra/Brizo/actions/runs/45584240076) | **Compiled (6270 s) and packaged** (89,694,928 B, sha256 `e08f899c…5a41ba`). Peak 15.06 GiB RAM + 11.2 GiB swap. Smoke: launch/HTTPS/cert/tabs pass; **sandbox check failed** (seccomp 9/10, userns 0/10); about: pages not verified. **No artifacts** (upload path bug) — package not recoverable |
+| macOS arm64 #1 | [45581403273](https://github.com/ish4ra/Brizo/actions/runs/45581403273) | **Compile timed out** (exit 142 after 17,401 s, ≈ 55% done; est. cold ≈ 8.5 h). GitHub showed green because of `continue-on-error`. Metrics artifact 15029122780 |
+| Windows x64 | — | Not started |
 
 ### Continuation steps (exact)
 1. `git fetch origin && git checkout claude/task-003-gecko-build && git pull`.
