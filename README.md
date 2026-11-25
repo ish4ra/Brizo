@@ -4,7 +4,7 @@
   <source media="(prefers-reduced-motion: reduce) and (prefers-color-scheme: dark)" srcset="assets/readme/static/hero-dark.png">
   <source media="(prefers-reduced-motion: reduce)" srcset="assets/readme/static/hero-light.png">
   <source media="(prefers-color-scheme: dark)" srcset="assets/readme/hero-dark.svg">
-  <img alt="Brizo — Fast. Private. Lightweight. Open. Early development: architecture and foundation." src="assets/readme/hero-light.svg" width="100%">
+  <img alt="Brizo — Fast. Private. Lightweight. Open. An illustrative sailboat sails across animated waves. Early development: architecture and foundation." src="assets/readme/hero-light.svg" width="100%">
 </picture>
 
 <sub><a href="https://github.com/settings/appearance" title="Opens GitHub's appearance settings (sign-in required). README content cannot change your theme."><img src="assets/readme/icon-sun.svg" width="12" height="12" alt="Light"><img src="assets/readme/icon-moon.svg" width="12" height="12" alt="Dark"></a> Artwork adapts to light and dark mode automatically · <a href="https://github.com/settings/appearance">GitHub appearance settings</a></sub>
@@ -223,8 +223,9 @@ no licence is granted for the contents of this repository. See
 
 “Brizo” is a working name and has **not** received trademark clearance. The
 logo shown to the owner for review is a provisional candidate whose provenance
-is unresolved, so it is intentionally **not** published here. README artwork
-uses original, abstract wave and wind motifs. Details:
+is unresolved, so it is intentionally **not** published here. The sailboat in
+the animated banner is a **temporary illustration, not the Brizo logo**; all
+README artwork is original and source-independent. Details:
 [docs/BRAND_PROVENANCE.md](docs/BRAND_PROVENANCE.md).
 
 <div align="center">
