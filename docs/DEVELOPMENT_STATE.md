@@ -28,7 +28,10 @@ Details and evidence: `docs/research/GECKO_BUILD_EXPERIMENT.md`.
 | Linux x64 #1 | [45580332174](https://github.com/ish4ra/Brizo/actions/runs/45580332174) | Runner lost ~18 min into compile; cause not proven (memory suspected) |
 | Linux x64 #2 | [45584240076](https://github.com/ish4ra/Brizo/actions/runs/45584240076) | **Compiled (6270 s) and packaged** (89,694,928 B, sha256 `e08f899c…5a41ba`). Peak 15.06 GiB RAM + 11.2 GiB swap. Smoke: launch/HTTPS/cert/tabs pass; **sandbox check failed** (seccomp 9/10, userns 0/10); about: pages not verified. **No artifacts** (upload path bug) — package not recoverable |
 | macOS arm64 #1 | [45581403273](https://github.com/ish4ra/Brizo/actions/runs/45581403273) | **Compile timed out** (exit 142 after 17,401 s, ≈ 55% done; est. cold ≈ 8.5 h). GitHub showed green because of `continue-on-error`. Metrics artifact 15029122780 |
-| Windows x64 | — | Not started |
+| Windows x64 | — | Not started before this session |
+| **Linux x64 #3** | [45637464100](https://github.com/ish4ra/Brizo/actions/runs/45637464100) | Running (commit `838e02b`): same build config, fixed upload paths, smoke v2 + AppArmor profile, acceptance gate |
+| **macOS arm64 #2 (staged)** | [45637464458](https://github.com/ish4ra/Brizo/actions/runs/45637464458) | Running: up to 3 chained jobs (~5 h each), local sccache handoff, `--disable-debug-symbols` |
+| **Windows x64 #1 (staged)** | [45637464606](https://github.com/ish4ra/Brizo/actions/runs/45637464606) | Running: up to 3 chained jobs, MozillaBuild + runner VS/SDK |
 
 ### Task 003 continuation work (this session)
 - README controls investigated and removed (D-019, PR #6 → `main` `d36c6d9`).
@@ -36,7 +39,7 @@ Details and evidence: `docs/research/GECKO_BUILD_EXPERIMENT.md`.
   (up to 3 chained jobs, local sccache handoff). Preflight runs 45635212713, 45635843712 and
   45637174497 all pass. Sandbox methodology fixed: official Firefox passes 7/7 seccomp and 7/7
   userns with an AppArmor userns profile.
-- Retries triggered (one each), run IDs recorded below once known.
+- Retries triggered at `838e02b` (one each): Linux 45637464100, macOS 45637464458, Windows 45637464606.
 
 ### Continuation steps (exact)
 1. `git fetch origin && git checkout claude/task-003-gecko-build && git pull`.
