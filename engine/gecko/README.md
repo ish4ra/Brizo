@@ -70,10 +70,28 @@ handling, and Brizo patches. None of that is here.
 Jobs are capped at 355 min (GitHub limit: 360). Compiles are capped at 290 min
 so logs, metrics and partial sccache state are still saved after a timeout.
 
+## Workflow layout (after attempt 2 / attempt 1 findings)
+
+| Workflow | Shape |
+| --- | --- |
+| `gecko-build-linux.yml` | One job (cold compile measured at 1 h 45 m with a 16 GiB swapfile) |
+| `gecko-build-macos.yml` → `gecko-stage-macos.yml` | Up to **3 chained jobs**. Each repeats verified source + configure, restores a local sccache dir from the previous stage (artifact), compiles for ≤ 285 min, then hands the cache on. The finishing stage packages, smoke-tests and uploads |
+| `gecko-build-windows.yml` → `gecko-stage-windows.yml` | Same staged design on `windows-latest` with MozillaBuild |
+| `gecko-preflight.yml` | No compile: artifact round-trip on 3 OSes, 2 GiB handoff timing, official-Firefox sandbox baseline, cache inventory |
+
+Every job ends with `acceptance.py`. It records source, configure, compile, package, smoke,
+security, metrics-upload and package-upload outcomes separately, and **fails the job**
+unless all required stages and the security checks pass. Packages that fail the security
+gate are uploaded only as `…-DIAGNOSTIC-security-unverified`. Uploaded paths are canonical
+`RUNNER_TEMP` paths. Attempt 2 lost its artifacts to a `..` path.
+
 ## Cache strategy
 
-sccache uses the GitHub Actions cache backend (`SCCACHE_GHA_ENABLED`,
-`mozilla-actions/sccache-action@v0.0.9`). Objects are written during the
+Linux: sccache with the GitHub Actions cache backend (`SCCACHE_GHA_ENABLED`,
+`mozilla-actions/sccache-action@v0.0.9`). Measured: 859 (Linux) and 461 (macOS) write
+errors, with 6,601 entries totalling 4.03 GiB, so the errors are not a size-limit effect.
+macOS/Windows: a **local-disk sccache dir handed between stages as an artifact**
+(preflight: 2 GiB uploaded in 25 s and arrived intact). Objects are written during the
 compile, so a timed-out run still warms the next one. Limits: 10 GB per
 repository, entries evicted after 7 days unused (GitHub docs). All three
 platforms share this budget, so expect eviction thrash. Measured sizes are in
