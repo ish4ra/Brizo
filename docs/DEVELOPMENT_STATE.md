@@ -40,6 +40,7 @@ Details and evidence: `docs/research/GECKO_BUILD_EXPERIMENT.md`.
   45637174497 all pass. Sandbox methodology fixed: official Firefox passes 7/7 seccomp and 7/7
   userns with an AppArmor userns profile.
 - Retries triggered at `838e02b` (one each): Linux 45637464100, macOS 45637464458, Windows 45637464606.
+- Verified early: **configure succeeded on all three** (Windows: first successful configure with MozillaBuild and the runner's VS/SDK, no repackaged `vs`). Compiles in progress when this session stopped.
 
 ### Continuation steps (exact)
 1. `git fetch origin && git checkout claude/task-003-gecko-build && git pull`.
